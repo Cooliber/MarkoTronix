@@ -72,6 +72,7 @@ import {
   FiList
 } from 'react-icons/fi';
 import Layout from '@/components/Layout';
+import WorkflowManager from '@/components/workflow/WorkflowManager';
 
 // Mock data for workflow templates
 const workflowTemplates = [
@@ -231,6 +232,29 @@ export default function WorkflowPage() {
   const [isTemplateMode, setIsTemplateMode] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const toast = useToast();
+  
+  // Animation effect when component mounts
+  useEffect(() => {
+    try {
+      // Import GSAP dynamically to avoid SSR issues
+      import('gsap').then(({ gsap }) => {
+        const tl = gsap.timeline();
+        
+        tl.fromTo(
+          '.page-title',
+          { opacity: 0, y: -20 },
+          { opacity: 1, y: 0, duration: 0.5 }
+        ).fromTo(
+          '.workflow-cards',
+          { opacity: 0, y: 20 },
+          { opacity: 1, y: 0, stagger: 0.1, duration: 0.5 },
+          '-=0.3'
+        );
+      });
+    } catch (error) {
+      console.error('GSAP animation error:', error);
+    }
+  }, [activeTab]);
 
   const handleAddNew = () => {
     setCurrentWorkflow(null);
@@ -456,6 +480,7 @@ export default function WorkflowPage() {
           <TabList mb="1em">
             <Tab>Active Workflows</Tab>
             <Tab>Workflow Templates</Tab>
+            <Tab>n8n Integration</Tab>
           </TabList>
           <TabPanels>
             {/* Active Workflows Tab */}
@@ -658,6 +683,42 @@ export default function WorkflowPage() {
                   </Card>
                 ))}
               </Grid>
+            </TabPanel>
+            
+            {/* n8n Integration Tab */}
+            <TabPanel p={0}>
+              <Box className="n8n-integration-container">
+                <Box mb={6}>
+                  <Heading size="md" mb={2} className="page-title">n8n Workflow Integration</Heading>
+                  <Text color="gray.600" className="page-description">
+                    Connect your HVAC CRM with n8n workflows for advanced automation and integrations.
+                  </Text>
+                </Box>
+                
+                <Box className="workflow-manager-container">
+                  <Flex direction="column" gap={4}>
+                    <Card p={4} boxShadow="md" borderRadius="lg">
+                      <Heading size="sm" mb={3}>Connection Status</Heading>
+                      <HStack>
+                        <Badge colorScheme="green" p={1} borderRadius="full">
+                          <HStack spacing={1}>
+                            <Box w={2} h={2} borderRadius="full" bg="green.500" />
+                            <Text>Connected</Text>
+                          </HStack>
+                        </Badge>
+                        <Text fontSize="sm" color="gray.500">n8n server at localhost:5678</Text>
+                      </HStack>
+                    </Card>
+                    
+                    <Divider />
+                    
+                    {/* Import our WorkflowManager component */}
+                    <Box className="workflow-manager-wrapper">
+                      <WorkflowManager />
+                    </Box>
+                  </Flex>
+                </Box>
+              </Box>
             </TabPanel>
           </TabPanels>
         </Tabs>

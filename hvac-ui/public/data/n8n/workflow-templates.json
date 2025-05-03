@@ -1,0 +1,387 @@
+{
+  "templates": [
+    {
+      "id": "customer-notification",
+      "name": "Customer Notification",
+      "description": "Send notifications to customers about service appointments",
+      "category": "Customer Management",
+      "requiredParams": ["customerId", "appointmentId", "notificationType"],
+      "example": {
+        "customerId": "12345",
+        "appointmentId": "67890",
+        "notificationType": "reminder",
+        "additionalData": {
+          "time": "2025-05-15T14:00:00Z",
+          "technician": "John Doe"
+        }
+      },
+      "nodes": [
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [100, 300],
+          "parameters": {
+            "path": "customer-notification",
+            "responseMode": "lastNode",
+            "responseData": "allEntries"
+          }
+        },
+        {
+          "name": "Customer Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [300, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/customers/{{ $json.customerId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Appointment Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [500, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/appointments/{{ $json.appointmentId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Prepare Email",
+          "type": "n8n-nodes-base.set",
+          "position": [700, 300],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "subject",
+                  "value": "={{ \"Appointment Reminder: \" + $json.appointment.date }}"
+                },
+                {
+                  "name": "body",
+                  "value": "={{ \"Dear \" + $json.customer.name + \",\\n\\nThis is a reminder about your upcoming appointment on \" + $json.appointment.date + \" at \" + $json.appointment.time + \".\\n\\nYour technician will be \" + $json.appointment.technician + \".\\n\\nThank you,\\nHVAC Service Team\" }}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [900, 300],
+          "parameters": {
+            "fromEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+            "toEmail": "={{ $json.customer.email }}",
+            "subject": "={{ $json.subject }}",
+            "text": "={{ $json.body }}"
+          }
+        }
+      ]
+    },
+    {
+      "id": "warranty-registration",
+      "name": "Warranty Registration",
+      "description": "Register product warranties and send confirmation to customers",
+      "category": "Warranty Management",
+      "requiredParams": ["customerId", "productId", "purchaseDate", "warrantyPeriod", "extendedWarranty"],
+      "example": {
+        "customerId": "12345",
+        "productId": "67890",
+        "purchaseDate": "2025-05-01",
+        "warrantyPeriod": 24,
+        "extendedWarranty": false
+      },
+      "nodes": [
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [100, 300],
+          "parameters": {
+            "path": "warranty-registration",
+            "responseMode": "lastNode",
+            "responseData": "allEntries"
+          }
+        },
+        {
+          "name": "Create Warranty",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [300, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/warranties",
+            "method": "POST",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            },
+            "jsonParameters": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "customerId",
+                  "value": "={{ $json.customerId }}"
+                },
+                {
+                  "name": "productId",
+                  "value": "={{ $json.productId }}"
+                },
+                {
+                  "name": "purchaseDate",
+                  "value": "={{ $json.purchaseDate }}"
+                },
+                {
+                  "name": "warrantyPeriod",
+                  "value": "={{ $json.warrantyPeriod }}"
+                },
+                {
+                  "name": "extendedWarranty",
+                  "value": "={{ $json.extendedWarranty }}"
+                },
+                {
+                  "name": "registrationDate",
+                  "value": "={{ $now.toISOString() }}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Generate PDF",
+          "type": "n8n-nodes-base.htmlToPdf",
+          "position": [500, 300],
+          "parameters": {
+            "html": "={{ \"<html><body><h1>Warranty Certificate</h1><p>Customer: \" + $json.customer.name + \"</p><p>Product: \" + $json.product.name + \" (\" + $json.product.model + \")</p><p>Serial Number: \" + $json.product.serialNumber + \"</p><p>Purchase Date: \" + $json.purchaseDate + \"</p><p>Warranty Period: \" + $json.warrantyPeriod + \" months</p><p>Extended Warranty: \" + ($json.extendedWarranty ? \"Yes\" : \"No\") + \"</p><p>Registration Date: \" + $json.registrationDate + \"</p></body></html>\" }}",
+            "options": {
+              "format": "A4",
+              "margin": {
+                "top": "40px",
+                "right": "40px",
+                "bottom": "40px",
+                "left": "40px"
+              }
+            }
+          }
+        },
+        {
+          "name": "Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [700, 300],
+          "parameters": {
+            "fromEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+            "toEmail": "={{ $json.customer.email }}",
+            "subject": "Your Warranty Registration",
+            "text": "={{ \"Dear \" + $json.customer.name + \",\\n\\nThank you for registering your product warranty. Please find attached your warranty certificate.\\n\\nProduct: \" + $json.product.name + \" (\" + $json.product.model + \")\\nSerial Number: \" + $json.product.serialNumber + \"\\nPurchase Date: \" + $json.purchaseDate + \"\\nWarranty Period: \" + $json.warrantyPeriod + \" months\\n\\nThank you,\\nHVAC Service Team\" }}",
+            "attachments": [
+              {
+                "name": "warranty-certificate.pdf",
+                "data": "={{ $json.pdf }}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "service-report-generation",
+      "name": "Service Report Generation",
+      "description": "Generate service reports from completed service orders",
+      "category": "Service Management",
+      "requiredParams": ["serviceOrderId", "technicianId", "reportFormat"],
+      "example": {
+        "serviceOrderId": "12345",
+        "technicianId": "67890",
+        "reportFormat": "pdf",
+        "includeImages": true,
+        "includeParts": true
+      },
+      "nodes": [
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [100, 300],
+          "parameters": {
+            "path": "service-report-generation",
+            "responseMode": "lastNode",
+            "responseData": "allEntries"
+          }
+        },
+        {
+          "name": "Get Service Order",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [300, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/service-orders/{{ $json.serviceOrderId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Generate Report",
+          "type": "n8n-nodes-base.htmlToPdf",
+          "position": [500, 300],
+          "parameters": {
+            "html": "={{ \"<html><body><h1>Service Report</h1><p>Service Order: \" + $json.serviceOrder.id + \"</p><p>Customer: \" + $json.serviceOrder.customer.name + \"</p><p>Date: \" + $json.serviceOrder.date + \"</p><p>Technician: \" + $json.serviceOrder.technician.name + \"</p><p>Problem: \" + $json.serviceOrder.problem + \"</p><p>Solution: \" + $json.serviceOrder.solution + \"</p></body></html>\" }}",
+            "options": {
+              "format": "A4",
+              "margin": {
+                "top": "40px",
+                "right": "40px",
+                "bottom": "40px",
+                "left": "40px"
+              }
+            }
+          }
+        },
+        {
+          "name": "Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [700, 300],
+          "parameters": {
+            "fromEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+            "toEmail": "={{ $json.serviceOrder.customer.email }}",
+            "subject": "Your Service Report",
+            "text": "={{ \"Dear \" + $json.serviceOrder.customer.name + \",\\n\\nPlease find attached your service report for the recent service visit.\\n\\nService Order: \" + $json.serviceOrder.id + \"\\nDate: \" + $json.serviceOrder.date + \"\\nTechnician: \" + $json.serviceOrder.technician.name + \"\\n\\nThank you for choosing our services.\\n\\nHVAC Service Team\" }}",
+            "attachments": [
+              {
+                "name": "service-report.pdf",
+                "data": "={{ $json.pdf }}"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "id": "invoice-generation",
+      "name": "Invoice Generation",
+      "description": "Generate invoices from completed service orders",
+      "category": "Billing",
+      "requiredParams": ["serviceOrderId", "customerId", "amount"],
+      "example": {
+        "serviceOrderId": "12345",
+        "customerId": "67890",
+        "amount": 250.00,
+        "currency": "USD",
+        "taxRate": 8.5,
+        "dueDate": "2025-06-01"
+      },
+      "nodes": [
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [100, 300],
+          "parameters": {
+            "path": "invoice-generation",
+            "responseMode": "lastNode",
+            "responseData": "allEntries"
+          }
+        },
+        {
+          "name": "Get Customer",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [300, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/customers/{{ $json.customerId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Get Service Order",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [500, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/service-orders/{{ $json.serviceOrderId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Calculate Tax",
+          "type": "n8n-nodes-base.set",
+          "position": [700, 300],
+          "parameters": {
+            "values": {
+              "number": [
+                {
+                  "name": "taxAmount",
+                  "value": "={{ $json.amount * ($json.taxRate / 100) }}"
+                },
+                {
+                  "name": "totalAmount",
+                  "value": "={{ $json.amount + $json.taxAmount }}"
+                }
+              ],
+              "string": [
+                {
+                  "name": "invoiceNumber",
+                  "value": "={{ \"INV-\" + $json.serviceOrderId + \"-\" + $now.format(\"YYYYMMDD\") }}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Generate Invoice",
+          "type": "n8n-nodes-base.htmlToPdf",
+          "position": [900, 300],
+          "parameters": {
+            "html": "={{ \"<html><body><h1>Invoice</h1><p>Invoice Number: \" + $json.invoiceNumber + \"</p><p>Date: \" + $now.format(\"YYYY-MM-DD\") + \"</p><p>Due Date: \" + $json.dueDate + \"</p><p>Customer: \" + $json.customer.name + \"</p><p>Service Order: \" + $json.serviceOrderId + \"</p><p>Amount: \" + $json.currency + \" \" + $json.amount.toFixed(2) + \"</p><p>Tax (\" + $json.taxRate + \"%): \" + $json.currency + \" \" + $json.taxAmount.toFixed(2) + \"</p><p>Total: \" + $json.currency + \" \" + $json.totalAmount.toFixed(2) + \"</p></body></html>\" }}",
+            "options": {
+              "format": "A4",
+              "margin": {
+                "top": "40px",
+                "right": "40px",
+                "bottom": "40px",
+                "left": "40px"
+              }
+            }
+          }
+        },
+        {
+          "name": "Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [1100, 300],
+          "parameters": {
+            "fromEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+            "toEmail": "={{ $json.customer.email }}",
+            "subject": "Your Invoice",
+            "text": "={{ \"Dear \" + $json.customer.name + \",\\n\\nPlease find attached your invoice for the recent service.\\n\\nInvoice Number: \" + $json.invoiceNumber + \"\\nDate: \" + $now.format(\"YYYY-MM-DD\") + \"\\nDue Date: \" + $json.dueDate + \"\\nAmount: \" + $json.currency + \" \" + $json.totalAmount.toFixed(2) + \"\\n\\nThank you for your business.\\n\\nHVAC Service Team\" }}",
+            "attachments": [
+              {
+                "name": "invoice.pdf",
+                "data": "={{ $json.pdf }}"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}

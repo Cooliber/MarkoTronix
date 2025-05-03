@@ -1,0 +1,358 @@
+{
+  "templates": [
+    {
+      "id": "customer-notification",
+      "name": "Customer Notification Workflow",
+      "description": "Send notifications to customers about service appointments",
+      "tags": ["notification", "customer", "appointment"],
+      "nodes": [
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [100, 300],
+          "parameters": {
+            "path": "customer-notification",
+            "responseMode": "lastNode",
+            "responseData": "allEntries"
+          }
+        },
+        {
+          "name": "Customer Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [300, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/customers/{{ $json.customerId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Appointment Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [500, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/appointments/{{ $json.appointmentId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Prepare Email",
+          "type": "n8n-nodes-base.set",
+          "position": [700, 300],
+          "parameters": {
+            "values": {
+              "string": [
+                {
+                  "name": "subject",
+                  "value": "={{ \"Appointment Reminder: \" + $json.appointment.date }}"
+                },
+                {
+                  "name": "body",
+                  "value": "={{ \"Dear \" + $json.customer.name + \",\\n\\nThis is a reminder about your upcoming appointment on \" + $json.appointment.date + \" at \" + $json.appointment.time + \".\\n\\nYour technician will be \" + $json.appointment.technician + \".\\n\\nThank you,\\nHVAC Service Team\" }}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [900, 300],
+          "parameters": {
+            "fromEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+            "toEmail": "={{ $json.customer.email }}",
+            "subject": "={{ $json.subject }}",
+            "text": "={{ $json.body }}"
+          }
+        },
+        {
+          "name": "Log Activity",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [1100, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/activities",
+            "method": "POST",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            },
+            "jsonParameters": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "customerId",
+                  "value": "={{ $json.customerId }}"
+                },
+                {
+                  "name": "type",
+                  "value": "notification"
+                },
+                {
+                  "name": "description",
+                  "value": "={{ \"Sent \" + $json.notificationType + \" notification for appointment \" + $json.appointmentId }}"
+                },
+                {
+                  "name": "timestamp",
+                  "value": "={{ $now.toISOString() }}"
+                }
+              ]
+            }
+          }
+        }
+      ],
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Customer Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Customer Data": {
+          "main": [
+            [
+              {
+                "node": "Appointment Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Appointment Data": {
+          "main": [
+            [
+              {
+                "node": "Prepare Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Prepare Email": {
+          "main": [
+            [
+              {
+                "node": "Send Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Send Email": {
+          "main": [
+            [
+              {
+                "node": "Log Activity",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "id": "warranty-registration",
+      "name": "Warranty Registration Workflow",
+      "description": "Register product warranties and send confirmation to customers",
+      "tags": ["warranty", "registration", "customer"],
+      "nodes": [
+        {
+          "name": "Webhook",
+          "type": "n8n-nodes-base.webhook",
+          "position": [100, 300],
+          "parameters": {
+            "path": "warranty-registration",
+            "responseMode": "lastNode",
+            "responseData": "allEntries"
+          }
+        },
+        {
+          "name": "Customer Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [300, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/customers/{{ $json.customerId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Product Data",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [500, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/products/{{ $json.productId }}",
+            "method": "GET",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            }
+          }
+        },
+        {
+          "name": "Create Warranty",
+          "type": "n8n-nodes-base.httpRequest",
+          "position": [700, 300],
+          "parameters": {
+            "url": "={{ $env.API_URL }}/warranties",
+            "method": "POST",
+            "authentication": "genericCredentialType",
+            "genericAuthType": "httpHeaderAuth",
+            "httpHeaderAuth": {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.API_TOKEN }}"
+            },
+            "jsonParameters": true,
+            "bodyParameters": {
+              "parameters": [
+                {
+                  "name": "customerId",
+                  "value": "={{ $json.customerId }}"
+                },
+                {
+                  "name": "productId",
+                  "value": "={{ $json.productId }}"
+                },
+                {
+                  "name": "purchaseDate",
+                  "value": "={{ $json.purchaseDate }}"
+                },
+                {
+                  "name": "warrantyPeriod",
+                  "value": "={{ $json.warrantyPeriod || 12 }}"
+                },
+                {
+                  "name": "extendedWarranty",
+                  "value": "={{ $json.extendedWarranty || false }}"
+                },
+                {
+                  "name": "registrationDate",
+                  "value": "={{ $now.toISOString() }}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Generate PDF",
+          "type": "n8n-nodes-base.htmlToPdf",
+          "position": [900, 300],
+          "parameters": {
+            "html": "={{ \"<html><body><h1>Warranty Certificate</h1><p>Customer: \" + $json.customer.name + \"</p><p>Product: \" + $json.product.name + \" (\" + $json.product.model + \")</p><p>Serial Number: \" + $json.product.serialNumber + \"</p><p>Purchase Date: \" + $json.purchaseDate + \"</p><p>Warranty Period: \" + $json.warrantyPeriod + \" months</p><p>Extended Warranty: \" + ($json.extendedWarranty ? \"Yes\" : \"No\") + \"</p><p>Registration Date: \" + $json.registrationDate + \"</p></body></html>\" }}",
+            "options": {
+              "format": "A4",
+              "margin": {
+                "top": "40px",
+                "right": "40px",
+                "bottom": "40px",
+                "left": "40px"
+              }
+            }
+          }
+        },
+        {
+          "name": "Send Email",
+          "type": "n8n-nodes-base.emailSend",
+          "position": [1100, 300],
+          "parameters": {
+            "fromEmail": "={{ $env.NOTIFICATION_EMAIL }}",
+            "toEmail": "={{ $json.customer.email }}",
+            "subject": "Your Warranty Registration",
+            "text": "={{ \"Dear \" + $json.customer.name + \",\\n\\nThank you for registering your product warranty. Please find attached your warranty certificate.\\n\\nProduct: \" + $json.product.name + \" (\" + $json.product.model + \")\\nSerial Number: \" + $json.product.serialNumber + \"\\nPurchase Date: \" + $json.purchaseDate + \"\\nWarranty Period: \" + $json.warrantyPeriod + \" months\\n\\nThank you,\\nHVAC Service Team\" }}",
+            "attachments": [
+              {
+                "name": "warranty-certificate.pdf",
+                "data": "={{ $json.pdf }}"
+              }
+            ]
+          }
+        }
+      ],
+      "connections": {
+        "Webhook": {
+          "main": [
+            [
+              {
+                "node": "Customer Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Customer Data": {
+          "main": [
+            [
+              {
+                "node": "Product Data",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Product Data": {
+          "main": [
+            [
+              {
+                "node": "Create Warranty",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Create Warranty": {
+          "main": [
+            [
+              {
+                "node": "Generate PDF",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        },
+        "Generate PDF": {
+          "main": [
+            [
+              {
+                "node": "Send Email",
+                "type": "main",
+                "index": 0
+              }
+            ]
+          ]
+        }
+      }
+    }
+  ]
+}

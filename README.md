@@ -1,6 +1,6 @@
-# HVAC CRM System
+# MarkoTronix HVAC CRM System
 
-A comprehensive CRM system for HVAC businesses, including a Progressive Web App (PWA) frontend and a containerized backend.
+A comprehensive CRM system for HVAC businesses, including a Progressive Web App (PWA) frontend with GSAP animations and a containerized backend.
 
 ## System Components
 
@@ -16,6 +16,11 @@ A Next.js Progressive Web Application with:
 - **Map View**: Visualize equipment locations and service areas
 - **Inventory Management**: Track components and suppliers
 - **Service Reports**: Generate and send service reports
+- **Warranty Management**: Issue and track warranty cards
+- **Service Order Tracking**: Real-time monitoring of service order status
+- **Mobile-Optimized Interface**: Responsive design with dedicated mobile layouts
+- **GSAP Animations**: Smooth transitions and interactive elements
+- **Multi-language Support**: English and Polish interfaces
 
 ### Backend (hvac-crm-system)
 
@@ -41,6 +46,12 @@ A Docker-based backend system with:
 
 ## Getting Started
 
+### Prerequisites
+
+- Node.js 18+
+- Yarn or npm
+- Docker (optional, for containerized deployment)
+
 ### Frontend Setup
 
 ```bash
@@ -61,6 +72,47 @@ docker-compose up -d
 ./init.sh
 ```
 
+## Building for Production
+
+### Standard Build
+
+```bash
+cd hvac-ui
+yarn build
+yarn start
+```
+
+### Docker Build
+
+```bash
+cd hvac-ui
+yarn build:docker
+docker run -p 3000:3000 hvac-ui
+```
+
+### Using Docker Compose
+
+```bash
+docker-compose up -d
+```
+
+### Deployment with Nixpack
+
+This project is configured to work with Nixpack for easy deployment:
+
+```bash
+nixpacks build ./hvac-ui -n hvac-ui
+```
+
+## Environment Variables
+
+See `.env.example` for all available environment variables. The most important ones are:
+
+- `API_URL`: URL of the backend API
+- `APP_ENV`: Application environment (development, production)
+- `PORT`: Port to run the application on
+- `HOST`: Host to bind the application to
+
 ## Features
 
 - **Progressive Web App**: Install on desktop and mobile devices
@@ -71,6 +123,10 @@ docker-compose up -d
 - **Integrated Mapping**: Visualize installations and optimize service routes
 - **Comprehensive Reporting**: Generate and send professional reports
 - **Scalable Architecture**: Designed to grow with your business
+- **GSAP Animations**: Smooth transitions and interactive elements
+- **Multi-language Support**: English and Polish interfaces
+- **Responsive Design**: Optimized for all screen sizes
+- **n8n Workflow Integration**: Automated business processes
 
 ## License
 
