@@ -1,0 +1,28 @@
+# Root nixpacks.toml file that redirects to the hvac-ui directory
+[setup]
+nixPkgs = ["nodejs_20", "npm", "gcc", "gnumake"]
+
+[phases.setup]
+workdir = "./hvac-ui"
+
+[phases.install]
+cmds = ["cd ./hvac-ui && npm install"]
+
+[phases.build]
+cmds = ["cd ./hvac-ui && npm run build"]
+
+[start]
+cmd = "cd ./hvac-ui && npm start"
+
+[variables]
+NODE_ENV = "production"
+NEXT_TELEMETRY_DISABLED = "1"
+
+# Cache directories between builds
+[[cache]]
+path = "hvac-ui/node_modules"
+key = "node_modules-{{ checksum 'hvac-ui/package-lock.json' }}"
+
+[[cache]]
+path = "hvac-ui/.next/cache"
+key = "next-cache-{{ checksum 'hvac-ui/package-lock.json' }}"

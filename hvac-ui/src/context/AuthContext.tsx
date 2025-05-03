@@ -1,6 +1,6 @@
 import { createContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/router';
-import jwt_decode from 'jwt-decode';
+const jwt_decode = require('jwt-decode');
 import { api } from '@/api/axios';
 
 interface User {

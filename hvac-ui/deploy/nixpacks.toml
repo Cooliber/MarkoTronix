@@ -1,0 +1,27 @@
+# Nixpacks configuration for HVAC CRM UI
+# This file is used by Nixpacks to build the application
+
+[phases.setup]
+nixPkgs = ["nodejs_18", "yarn", "gcc", "gnumake"]
+
+[phases.install]
+cmds = ["yarn install --frozen-lockfile"]
+
+[phases.build]
+cmds = ["yarn build"]
+
+[start]
+cmd = "yarn start"
+
+[variables]
+NODE_ENV = "production"
+NEXT_TELEMETRY_DISABLED = "1"
+
+# Cache directories between builds
+[[cache]]
+path = "node_modules"
+key = "node_modules-{{ checksum 'yarn.lock' }}"
+
+[[cache]]
+path = ".next/cache"
+key = "next-cache-{{ checksum 'yarn.lock' }}"
