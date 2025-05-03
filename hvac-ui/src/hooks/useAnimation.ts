@@ -1,4 +1,4 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect } from 'react';  
 import { gsap } from 'gsap';
 
 // Hook for creating and managing GSAP animations

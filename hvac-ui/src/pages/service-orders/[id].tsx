@@ -80,6 +80,8 @@ import MobileLayout from '@/components/MobileLayout';
 import { useAnimationRef, useStaggerAnimation } from '@/hooks/useAnimation';
 import { cardEnterAnimation, listItemAnimation, pageEnterAnimation } from '@/utils/animations';
 
+const toast = useToast();
+
 // Mock data for a service order
 const mockServiceOrder = {
   id: 'SO001',
@@ -143,6 +145,14 @@ const mockServiceOrder = {
   ],
 };
 
+  const mainContentRef = useRef(null);
+  const detailsRef = useRef(null);
+  const progressRef = useRef(null);
+  const historyRef = useRef(null);
+
+
+  const router = useRouter();
+
   const handleNotesSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     toast({
@@ -183,6 +193,21 @@ const mockServiceOrder = {
       duration: 3000,
       isClosable: true,
     });
+  };
+
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const statusColors: { [key: string]: string } = {
+    'in-progress': 'blue',
+    completed: 'green',
+    pending: 'yellow',
+    cancelled: 'red',
+  };
+
+  const priorityColors: { [key: string]: string } = {
+    high: 'red',
+    medium: 'yellow',
+    low: 'green',
   };
 
   const handleUpdateStatus = () => {
