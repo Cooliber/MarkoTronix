@@ -9,7 +9,7 @@ WORKDIR /app
 COPY hvac-ui/package.json hvac-ui/package-lock.json* ./
 
 # Install dependencies
-RUN npm ci
+RUN npm install
 
 # Rebuild the source code only when needed
 FROM base AS builder

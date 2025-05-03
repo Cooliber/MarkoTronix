@@ -6,7 +6,7 @@ nixPkgs = ["nodejs_20", "npm", "gcc", "gnumake"]
 workdir = "./hvac-ui"
 
 [phases.install]
-cmds = ["cd ./hvac-ui && npm ci"]
+cmds = ["cd ./hvac-ui && npm install"]
 
 [phases.build]
 cmds = ["cd ./hvac-ui && npm run build"]

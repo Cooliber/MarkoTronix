@@ -11,11 +11,19 @@ PLATFORM=${1:-"sevilla"}
 
 # Print usage information
 function print_usage() {
-  echo "Usage: $0 [PLATFORM]"
+  echo "Usage: $0 [PLATFORM] [OPTIONS]"
   echo "  PLATFORM: The deployment platform (default: sevilla)"
-  echo "            Valid values: sevilla, nixpacks, docker, docker-compose"
+  echo "            Valid values: sevilla, nixpacks, docker, docker-compose, standalone"
   echo ""
-  echo "Example: $0 nixpacks"
+  echo "Environment variables:"
+  echo "  PORT           Port to expose the application (default: 3000)"
+  echo "  API_URL        URL of the API (default: http://localhost:8000/api)"
+  echo "  APP_ENV        Environment (development, production) (default: production)"
+  echo ""
+  echo "Examples:"
+  echo "  $0 nixpacks"
+  echo "  PORT=8080 API_URL=https://api.example.com/api $0 docker"
+  echo "  $0 docker-compose standalone"
 }
 
 # Check if help is requested
@@ -24,8 +32,13 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
   exit 0
 fi
 
+# Default environment variables
+export PORT=${PORT:-3000}
+export API_URL=${API_URL:-http://localhost:8000/api}
+export APP_ENV=${APP_ENV:-production}
+
 # Validate platform
-if [[ "$PLATFORM" != "sevilla" && "$PLATFORM" != "nixpacks" && "$PLATFORM" != "docker" && "$PLATFORM" != "docker-compose" ]]; then
+if [[ "$PLATFORM" != "sevilla" && "$PLATFORM" != "nixpacks" && "$PLATFORM" != "docker" && "$PLATFORM" != "docker-compose" && "$PLATFORM" != "standalone" ]]; then
   echo "Error: Invalid platform '$PLATFORM'"
   print_usage
   exit 1
@@ -43,17 +56,35 @@ case "$PLATFORM" in
     echo "Deploying with Nixpacks..."
     nixpacks build . --config ./nixpacks.toml --name hvac-crm
     echo "Running the container..."
-    docker run -p 3000:3000 --env-file .env hvac-crm
+    docker run -p ${PORT:-3000}:3000 \
+      -e NODE_ENV=production \
+      -e NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000/api} \
+      -e API_URL=${API_URL:-http://localhost:8000/api} \
+      -e APP_ENV=${APP_ENV:-production} \
+      hvac-crm
     ;;
   "docker")
     echo "Building Docker image..."
     docker build -t hvac-crm-ui .
     echo "Running Docker container..."
-    docker run -p 3000:3000 --env-file .env hvac-crm-ui
+    docker run -p ${PORT:-3000}:3000 \
+      -e NODE_ENV=production \
+      -e NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000/api} \
+      -e API_URL=${API_URL:-http://localhost:8000/api} \
+      -e APP_ENV=${APP_ENV:-production} \
+      hvac-crm-ui
     ;;
   "docker-compose")
     echo "Deploying with Docker Compose..."
-    docker-compose up -d
+    if [[ "$2" == "standalone" ]]; then
+      docker-compose -f docker-compose.standalone.yml up -d
+    else
+      docker-compose up -d
+    fi
+    ;;
+  "standalone")
+    echo "Deploying with standalone Docker Compose..."
+    docker-compose -f docker-compose.standalone.yml up -d
     ;;
 esac
 

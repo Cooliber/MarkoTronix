@@ -34,7 +34,7 @@ A Docker-based backend system with:
 - **Vector Database**: Qdrant for embeddings and similarity search
 - **Reverse Proxy**: Nginx for routing and SSL termination
 - **Monitoring**: Prometheus, Grafana, and Jaeger for observability
-- **Workflow Automation**: n8n for integrations and automation
+- **Workflow Automation**: Integrated workflow automation system
 
 ## Documentation
 
@@ -48,8 +48,8 @@ A Docker-based backend system with:
 
 ### Prerequisites
 
-- Node.js 18+
-- Yarn or npm
+- Node.js 20+
+- npm
 - Docker (optional, for containerized deployment)
 
 ### Frontend Setup
@@ -58,8 +58,8 @@ A Docker-based backend system with:
 cd hvac-ui
 cp .env.example .env
 # Update the .env file with your API URL and other configuration
-yarn install
-yarn dev
+npm install
+npm run dev
 ```
 
 ### Backend Setup
@@ -99,11 +99,14 @@ npm run docker:build
 npm run docker:run
 ```
 
-### Using Docker Compose with n8n
+### Using Docker Compose
 
 ```bash
 # From the root directory
 docker-compose up -d
+
+# Or using standalone mode (frontend only)
+docker-compose -f docker-compose.standalone.yml up -d
 
 # Or using npm scripts
 npm run docker:compose
@@ -143,10 +146,19 @@ The project includes a deployment script that supports multiple platforms:
 ./deploy.sh nixpacks
 
 # Deploy with Docker
-./deploy.sh docker
+PORT=8080 API_URL=https://api.example.com/api ./deploy.sh docker
 
 # Deploy with Docker Compose
 ./deploy.sh docker-compose
+
+# Deploy standalone (frontend only)
+./deploy.sh standalone
+```
+
+You can customize the deployment with environment variables:
+
+```bash
+PORT=8080 API_URL=https://api.example.com/api APP_ENV=production ./deploy.sh docker
 ```
 
 ### Sevilla-Ready Deployment
@@ -192,7 +204,7 @@ See `.env.example` for all available environment variables. The most important o
 - **GSAP Animations**: Smooth transitions and interactive elements
 - **Multi-language Support**: English and Polish interfaces
 - **Responsive Design**: Optimized for all screen sizes
-- **n8n Workflow Integration**: Automated business processes
+- **Workflow Automation**: Integrated business process automation
 
 ## License
 
