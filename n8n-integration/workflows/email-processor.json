@@ -1,0 +1,273 @@
+{
+  "name": "Email Processor",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 5
+            }
+          ]
+        }
+      },
+      "id": "1",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        250,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "protocol": "imap",
+        "mailbox": "INBOX",
+        "limit": 10,
+        "format": "resolved",
+        "download": true,
+        "options": {
+          "onlyUnread": true,
+          "markRead": true
+        }
+      },
+      "id": "2",
+      "name": "IMAP Email",
+      "type": "n8n-nodes-base.emailReadImap",
+      "typeVersion": 1,
+      "position": [
+        450,
+        300
+      ],
+      "credentials": {
+        "imap": {
+          "id": "1",
+          "name": "IMAP Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.subject.toLowerCase() }}",
+              "operation": "contains",
+              "value2": "service request"
+            }
+          ]
+        }
+      },
+      "id": "3",
+      "name": "Service Request Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_HVAC_API_URL }}/service-orders",
+        "method": "POST",
+        "authentication": "headerAuth",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.N8N_HVAC_API_KEY }}"
+            }
+          ]
+        },
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "clientEmail",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json.text }}"
+            },
+            {
+              "name": "priority",
+              "value": "medium"
+            },
+            {
+              "name": "status",
+              "value": "new"
+            },
+            {
+              "name": "source",
+              "value": "email"
+            }
+          ]
+        }
+      },
+      "id": "4",
+      "name": "Create Service Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        850,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.subject.toLowerCase() }}",
+              "operation": "contains",
+              "value2": "warranty"
+            }
+          ]
+        }
+      },
+      "id": "5",
+      "name": "Warranty Filter",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        650,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "url": "={{ $env.N8N_HVAC_API_URL }}/warranties/request",
+        "method": "POST",
+        "authentication": "headerAuth",
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.N8N_HVAC_API_KEY }}"
+            }
+          ]
+        },
+        "options": {},
+        "bodyParametersUi": {
+          "parameter": [
+            {
+              "name": "clientEmail",
+              "value": "={{ $json.from }}"
+            },
+            {
+              "name": "subject",
+              "value": "={{ $json.subject }}"
+            },
+            {
+              "name": "message",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        }
+      },
+      "id": "6",
+      "name": "Process Warranty Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        850,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "={{ $env.N8N_SMTP_USER }}",
+        "toEmail": "={{ $json.from }}",
+        "subject": "Your service request has been received",
+        "text": "=Dear Customer,\n\nThank you for your service request. We have created a service order and will contact you shortly.\n\nService Order Details:\nReference: {{ $json.data.reference }}\nStatus: {{ $json.data.status }}\nPriority: {{ $json.data.priority }}\n\nBest regards,\nMarkoTronix HVAC Service Team"
+      },
+      "id": "7",
+      "name": "Send Confirmation",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [
+        1050,
+        200
+      ],
+      "credentials": {
+        "smtp": {
+          "id": "2",
+          "name": "SMTP Account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "IMAP Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IMAP Email": {
+      "main": [
+        [
+          {
+            "node": "Service Request Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Service Request Filter": {
+      "main": [
+        [
+          {
+            "node": "Create Service Order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Warranty Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Service Order": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Warranty Filter": {
+      "main": [
+        [
+          {
+            "node": "Process Warranty Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
