@@ -72,7 +72,7 @@ export default function Navbar({ onSidebarOpen }: NavbarProps) {
         </Flex>
         <Flex flex={{ base: 1 }} justify={{ base: 'center', md: 'start' }}>
           <Text
-            textAlign={useDisclosure ? 'left' : 'center'}
+            textAlign={isOpen ? 'left' : 'center'}
             fontFamily={'heading'}
             color={useColorModeValue('gray.800', 'white')}
             display={{ base: 'none', md: 'flex' }}

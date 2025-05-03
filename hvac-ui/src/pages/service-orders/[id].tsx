@@ -143,63 +143,32 @@ const mockServiceOrder = {
   ],
 };
 
-// Status color mapping
-const statusColors = {
-  'pending': 'yellow',
-  'scheduled': 'blue',
-  'in-progress': 'orange',
-  'completed': 'green',
-  'cancelled': 'red',
-};
+  const handleNotesSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    toast({
+      title: 'Notes updated',
+      description: 'Service order notes have been updated.',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
 
-// Priority color mapping
-const priorityColors = {
-  'low': 'green',
-  'medium': 'blue',
-  'high': 'red',
-};
+  const handlePartsSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    toast({
+      title: 'Parts updated',
+      description: 'Service order parts list has been updated.',
+      status: 'success',
+      duration: 3000,
+      isClosable: true,
+    });
+  };
 
-export default function ServiceOrderDetail() {
-  const router = useRouter();
-  const { id } = router.query;
-  const toast = useToast();
-  const { isOpen, onOpen, onClose } = useDisclosure();
-  
-  // Animation hooks
-  const { elementRef: mainContentRef, animate: animateMainContent } = useAnimationRef();
-  const { elementRef: detailsRef, animate: animateDetails } = useAnimationRef();
-  const { elementRef: progressRef, animate: animateProgress } = useAnimationRef();
-  const { elementRef: historyRef, animate: animateHistory } = useAnimationRef();
-  const { containerRef, animateChildren } = useStaggerAnimation();
-
-  // Apply animations on component mount
-  useEffect(() => {
-    // Main content animation
-    animateMainContent(() => pageEnterAnimation(mainContentRef.current as HTMLElement));
-    
-    // Section animations with slight delays for staggered effect
-    animateDetails(() => cardEnterAnimation(detailsRef.current as HTMLElement, 0.1));
-    animateProgress(() => cardEnterAnimation(progressRef.current as HTMLElement, 0.2));
-    animateHistory(() => cardEnterAnimation(historyRef.current as HTMLElement, 0.3));
-    
-    // Animate list items
-    if (historyRef.current) {
-      const items = Array.from(
-        historyRef.current.querySelectorAll('.history-item')
-      ) as HTMLElement[];
-      listItemAnimation(items);
-    }
-  }, [
-    animateMainContent,
-    animateDetails,
-    animateProgress,
-    animateHistory,
-  ]);
-
-  const handleCallClient = () => {
+  const handleCallClient = (phone: string) => {
     toast({
       title: 'Calling client',
-      description: `Initiating call to ${mockServiceOrder.clientPhone}`,
+      description: `Initiating call to ${phone}`,
       status: 'info',
       duration: 3000,
       isClosable: true,
@@ -220,7 +189,7 @@ export default function ServiceOrderDetail() {
     onOpen();
   };
 
-  const handleStatusSubmit = (e) => {
+  const handleStatusSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     toast({
       title: 'Status updated',
@@ -243,8 +212,8 @@ export default function ServiceOrderDetail() {
   };
 
   return (
-    <MobileLayout 
-      title={`Order ${mockServiceOrder.id}`} 
+    <MobileLayout
+      title={`Order ${mockServiceOrder.id}`}
       showBackButton={true}
       onBack={() => router.push('/service-orders')}
     >

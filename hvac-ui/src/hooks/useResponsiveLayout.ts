@@ -14,7 +14,7 @@ export const useResponsiveLayout = () => {
     // Only redirect if we're on mobile
     if (isMobile) {
       // List of pages that have mobile-specific versions
-      const mobileRoutes = {
+      const mobileRoutes: { [key: string]: string } = {
         '/dashboard': '/mobile-dashboard',
         // Add more routes as needed
       };

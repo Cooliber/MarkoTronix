@@ -74,27 +74,22 @@ export default function MobileLayout({
 
   // Handle drawer animations
   useEffect(() => {
-    if (drawerRef.current) {
-      if (isOpen) {
-        const animation = mobileMenuOpenAnimation(drawerRef.current);
-        registerAnimation(animation);
-      }
+    if (drawerRef.current && isOpen) {
+      mobileMenuOpenAnimation(drawerRef.current);
     }
-  }, [isOpen, registerAnimation]);
+  }, [isOpen]);
 
   // Handle page transition animations
   useEffect(() => {
     if (contentRef.current) {
-      const animation = pageEnterAnimation(contentRef.current);
-      registerAnimation(animation);
+      pageEnterAnimation(contentRef.current);
     }
-  }, [currentPath, registerAnimation]);
+  }, [currentPath]);
 
   const handleCloseDrawer = () => {
     if (drawerRef.current && isOpen) {
       const animation = mobileMenuCloseAnimation(drawerRef.current);
       animation.eventCallback('onComplete', onClose);
-      registerAnimation(animation);
     } else {
       onClose();
     }

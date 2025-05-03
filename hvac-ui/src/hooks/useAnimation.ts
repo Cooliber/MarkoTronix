@@ -31,23 +31,23 @@ export const useAnimation = () => {
 export const useAnimationRef = <T extends HTMLElement>() => {
   const elementRef = useRef<T>(null);
   const { registerAnimation } = useAnimation();
-  
-  const animate = (animationFn: (element: T) => gsap.core.Tween) => {
+
+  const animate = (animationFn: (element: T) => gsap.core.Tween | gsap.core.Timeline) => {
     if (elementRef.current) {
       const animation = animationFn(elementRef.current);
-      return registerAnimation(animation);
+      return registerAnimation(animation as gsap.core.Tween); // Cast to Tween for registration
     }
     return null;
   };
-  
+
   return { elementRef, animate };
 };
 
 // Hook for staggered animations on multiple elements
 export const useStaggerAnimation = <T extends HTMLElement>() => {
-  const containerRef = useRef<HTMLElement>(null);
+  const containerRef = useRef<T>(null);
   const { registerAnimation } = useAnimation();
-  
+
   const animateChildren = (
     selector: string,
     animationFn: (elements: HTMLElement[]) => gsap.core.Tween
@@ -56,7 +56,7 @@ export const useStaggerAnimation = <T extends HTMLElement>() => {
       const elements = Array.from(
         containerRef.current.querySelectorAll(selector)
       ) as HTMLElement[];
-      
+
       if (elements.length > 0) {
         const animation = animationFn(elements);
         return registerAnimation(animation);
@@ -64,7 +64,7 @@ export const useStaggerAnimation = <T extends HTMLElement>() => {
     }
     return null;
   };
-  
+
   return { containerRef, animateChildren };
 };
 

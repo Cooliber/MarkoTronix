@@ -31,7 +31,7 @@ export default function AnimatedChart({
   type = 'bar',
 }: AnimatedChartProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { elementRef: containerRef, animate } = useAnimationRef();
+  const { elementRef: containerRef, animate } = useAnimationRef<HTMLDivElement>();
   
   // Colors
   const bgColor = useColorModeValue('white', 'gray.800');
@@ -130,7 +130,7 @@ export default function AnimatedChart({
           // Store the target values for animation
           gsap.to(canvas, {
             onUpdate: () => {
-              const progress = gsap.getProperty(canvas, 'progress') || 0;
+               const progress = gsap.getProperty(canvas, 'progress') as number || 0;
               const currentHeight = (value / maxValue) * chartHeight * progress;
               
               // Clear and redraw this bar
@@ -173,7 +173,7 @@ export default function AnimatedChart({
         // Animate the line drawing
         gsap.to(canvas, {
           onUpdate: () => {
-            const progress = gsap.getProperty(canvas, 'progress') || 0;
+            const progress = gsap.getProperty(canvas, 'progress') as number || 0;
             const pointCount = Math.ceil(points.length * progress);
             
             // Clear and redraw

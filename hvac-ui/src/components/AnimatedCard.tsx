@@ -57,7 +57,7 @@ export default function AnimatedCard({
       element.addEventListener('mouseleave', () => {
         gsap.to(element, { 
           y: 0, 
-          boxShadow: props.boxShadow || 'md', 
+          boxShadow: props.boxShadow as any || 'md',
           duration: 0.2 
         });
       });
@@ -72,7 +72,7 @@ export default function AnimatedCard({
       
       element.addEventListener('mouseleave', () => {
         gsap.to(element, { 
-          boxShadow: props.boxShadow || 'md', 
+          boxShadow: props.boxShadow as any || 'md', 
           duration: 0.3 
         });
       });

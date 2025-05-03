@@ -140,11 +140,11 @@ const recentActivities = [
 
 export default function MobileDashboard() {
   // Animation hooks
-  const { containerRef, animateChildren } = useStaggerAnimation();
-  const { elementRef: statsRef, animate: animateStats } = useAnimationRef();
-  const { elementRef: appointmentsRef, animate: animateAppointments } = useAnimationRef();
-  const { elementRef: serviceOrdersRef, animate: animateServiceOrders } = useAnimationRef();
-  const { elementRef: activitiesRef, animate: animateActivities } = useAnimationRef();
+  const { containerRef, animateChildren } = useStaggerAnimation<HTMLDivElement>();
+  const { elementRef: statsRef, animate: animateStats } = useAnimationRef<HTMLDivElement>();
+  const { elementRef: appointmentsRef, animate: animateAppointments } = useAnimationRef<HTMLDivElement>();
+  const { elementRef: serviceOrdersRef, animate: animateServiceOrders } = useAnimationRef<HTMLDivElement>();
+  const { elementRef: activitiesRef, animate: animateActivities } = useAnimationRef<HTMLDivElement>();
 
   // Apply animations on component mount
   useEffect(() => {
@@ -188,7 +188,7 @@ export default function MobileDashboard() {
 
   return (
     <MobileLayout title="Dashboard">
-      <Box ref={containerRef} pb={6}>
+        <Box ref={containerRef} pb={6}>
         {/* Stats Section */}
         <Box ref={statsRef} mb={6}>
           <SimpleGrid columns={{ base: 2, md: 4 }} spacing={4}>
@@ -245,7 +245,7 @@ export default function MobileDashboard() {
           </Flex>
           <Card boxShadow="sm" borderRadius="lg">
             <CardBody p={0}>
-              <List spacing={0} divider={<Divider />}>
+              <List spacing={0}>
                 {upcomingAppointments.map((appointment) => (
                   <ListItem
                     key={appointment.id}
@@ -316,7 +316,7 @@ export default function MobileDashboard() {
           </Flex>
           <Card boxShadow="sm" borderRadius="lg">
             <CardBody p={0}>
-              <List spacing={0} divider={<Divider />}>
+              <List spacing={0}>
                 {activeServiceOrders.map((order) => (
                   <ListItem
                     key={order.id}
@@ -390,7 +390,7 @@ export default function MobileDashboard() {
           </Flex>
           <Card boxShadow="sm" borderRadius="lg">
             <CardBody p={0}>
-              <List spacing={0} divider={<Divider />}>
+              <List spacing={0}>
                 {recentActivities.map((activity) => (
                   <ListItem
                     key={activity.id}

@@ -53,8 +53,9 @@ import {
   TagLabel,
   TagLeftIcon,
   Tooltip,
+  Icon,
 } from '@chakra-ui/react';
-import { 
+import {
   FiPlus, 
   FiEdit, 
   FiEye, 
@@ -74,8 +75,36 @@ import {
 } from 'react-icons/fi';
 import Layout from '@/components/Layout';
 
+// Define a type for Service Order objects
+interface ServiceOrder {
+  id: string;
+  clientName: string;
+  clientPhone: string;
+  address: string;
+  equipmentType: string;
+  model?: string | null;
+  serialNumber?: string | null;
+  problem: string;
+  status: 'pending' | 'scheduled' | 'in-progress' | 'completed' | 'cancelled';
+  priority: 'low' | 'medium' | 'high';
+  scheduledDate: string;
+  scheduledTime: string;
+  technician?: string | null;
+  technicianId?: string | null;
+  technicianPhoto?: string | null;
+  notes?: string | null;
+  lastUpdated: string;
+  estimatedCompletionTime?: string | null;
+  progress?: number;
+  currentActivity?: string | null;
+  partsNeeded?: string[];
+  partsAvailable?: boolean;
+  completionNotes?: string | null;
+  completionTime?: string | null;
+}
+
 // Mock data for service orders
-const mockServiceOrders = [
+const mockServiceOrders: ServiceOrder[] = [
   {
     id: 'SO001',
     clientName: 'Jan Kowalski',
@@ -203,8 +232,8 @@ const priorityColors = {
 
 export default function ServiceOrdersPage() {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [serviceOrders, setServiceOrders] = useState(mockServiceOrders);
-  const [currentOrder, setCurrentOrder] = useState(null);
+  const [serviceOrders, setServiceOrders] = useState<ServiceOrder[]>(mockServiceOrders);
+  const [currentOrder, setCurrentOrder] = useState<ServiceOrder | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const [refreshInterval, setRefreshInterval] = useState(30); // seconds
@@ -214,12 +243,12 @@ export default function ServiceOrdersPage() {
   useEffect(() => {
     const interval = setInterval(() => {
       // Update in-progress orders
-      setServiceOrders(prevOrders => 
+      setServiceOrders(prevOrders =>
         prevOrders.map(order => {
           if (order.status === 'in-progress') {
             // Randomly increase progress
-            const newProgress = Math.min(order.progress + Math.floor(Math.random() * 5), 100);
-            
+            const newProgress = Math.min((order.progress || 0) + Math.floor(Math.random() * 5), 100);
+
             // If progress reaches 100, mark as completed
             if (newProgress === 100) {
               return {
@@ -232,7 +261,7 @@ export default function ServiceOrdersPage() {
                 completionNotes: 'Service completed successfully. All systems operational.'
               };
             }
-            
+
             return {
               ...order,
               progress: newProgress,
@@ -253,43 +282,46 @@ export default function ServiceOrdersPage() {
     onOpen();
   };
 
-  const handleEdit = (order) => {
+  const handleEdit = (order: ServiceOrder) => {
     setCurrentOrder(order);
     setIsViewMode(false);
     onOpen();
   };
 
-  const handleView = (order) => {
+  const handleView = (order: ServiceOrder) => {
     setCurrentOrder(order);
     setIsViewMode(true);
     onOpen();
   };
 
-  const handleSave = (event) => {
+  const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.target);
-    
-    const orderData = {
+    const formData = new FormData(event.currentTarget);
+
+    const orderData: ServiceOrder = {
       id: currentOrder ? currentOrder.id : `SO${(serviceOrders.length + 1).toString().padStart(3, '0')}`,
-      clientName: formData.get('clientName'),
-      clientPhone: formData.get('clientPhone'),
-      address: formData.get('address'),
-      equipmentType: formData.get('equipmentType'),
-      model: formData.get('model'),
-      serialNumber: formData.get('serialNumber'),
-      problem: formData.get('problem'),
-      status: formData.get('status'),
-      priority: formData.get('priority'),
-      scheduledDate: formData.get('scheduledDate'),
-      scheduledTime: formData.get('scheduledTime'),
-      technician: formData.get('technician') || null,
-      technicianId: formData.get('technicianId') || null,
-      notes: formData.get('notes'),
+      clientName: formData.get('clientName') as string,
+      clientPhone: formData.get('clientPhone') as string,
+      address: formData.get('address') as string,
+      equipmentType: formData.get('equipmentType') as string,
+      model: (formData.get('model') as string) || null,
+      serialNumber: (formData.get('serialNumber') as string) || null,
+      problem: formData.get('problem') as string,
+      status: formData.get('status') as ServiceOrder['status'],
+      priority: formData.get('priority') as ServiceOrder['priority'],
+      scheduledDate: formData.get('scheduledDate') as string,
+      scheduledTime: formData.get('scheduledTime') as string,
+      technician: (formData.get('technician') as string) || null,
+      technicianId: (formData.get('technicianId') as string) || null,
+      notes: (formData.get('notes') as string) || null,
       lastUpdated: new Date().toISOString(),
       progress: currentOrder?.progress || 0,
       currentActivity: currentOrder?.currentActivity || null,
       partsNeeded: currentOrder?.partsNeeded || [],
       partsAvailable: currentOrder?.partsAvailable || true,
+      estimatedCompletionTime: currentOrder?.estimatedCompletionTime || null,
+      completionNotes: currentOrder?.completionNotes || null,
+      completionTime: currentOrder?.completionTime || null,
     };
 
     if (currentOrder) {
@@ -316,7 +348,7 @@ export default function ServiceOrdersPage() {
     onClose();
   };
 
-  const handleRefreshRateChange = (e) => {
+  const handleRefreshRateChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     setRefreshInterval(Number(e.target.value));
     toast({
       title: 'Refresh rate updated',
@@ -327,7 +359,7 @@ export default function ServiceOrdersPage() {
     });
   };
 
-  const handleCallClient = (phone) => {
+  const handleCallClient = (phone: string) => {
     toast({
       title: 'Calling client',
       description: `Initiating call to ${phone}`,
@@ -337,17 +369,17 @@ export default function ServiceOrdersPage() {
     });
   };
 
-  const handleMessageClient = (client) => {
+  const handleMessageClient = (clientName: string) => {
     toast({
       title: 'Message client',
-      description: `Opening messaging interface for ${client}`,
+      description: `Opening messaging interface for ${clientName}`,
       status: 'info',
       duration: 3000,
       isClosable: true,
     });
   };
 
-  const handleGenerateReport = (order) => {
+  const handleGenerateReport = (order: ServiceOrder) => {
     toast({
       title: 'Generating report',
       description: `Service report for order ${order.id} is being generated.`,
@@ -631,7 +663,7 @@ export default function ServiceOrdersPage() {
                         )}
                         
                         <Flex alignItems="center">
-                          <Avatar size="sm" src={order.technicianPhoto} mr={2} />
+                          <Avatar size="sm" src={order.technicianPhoto ?? undefined} mr={2} />
                           <Box>
                             <Text fontSize="sm" fontWeight="medium">{order.technician}</Text>
                             <Text fontSize="xs" color="gray.600">Technician</Text>
@@ -698,7 +730,7 @@ export default function ServiceOrdersPage() {
                         <Td>{order.id}</Td>
                         <Td>{order.clientName}</Td>
                         <Td>{order.problem}</Td>
-                        <Td>{order.completionTime ? new Date(order.completionTime).toLocaleString() : 'N/A'}</Td>
+                        <Td>{typeof order.completionTime === 'string' ? new Date(order.completionTime).toLocaleString() : 'N/A'}</Td>
                         <Td>{order.technician || 'Not assigned'}</Td>
                         <Td>
                           <HStack spacing={2}>
@@ -959,21 +991,21 @@ export default function ServiceOrdersPage() {
                     <Box mt={4} p={4} borderWidth={1} borderRadius="md" borderColor="green.200" bg="green.50">
                       <Heading size="sm" mb={2}>Completion Details</Heading>
                       <Text fontSize="sm">
-                        <strong>Completed on:</strong> {new Date(currentOrder.completionTime).toLocaleString()}
+                        <strong>Completed on:</strong> {currentOrder?.completionTime ? new Date(currentOrder.completionTime).toLocaleString() : 'N/A'}
                       </Text>
                       <Text fontSize="sm" mt={2}>
-                        <strong>Technician:</strong> {currentOrder.technician}
+                        <strong>Technician:</strong> {currentOrder?.technician}
                       </Text>
-                      {currentOrder.completionNotes && (
+                      {currentOrder?.completionNotes && (
                         <Box mt={2}>
                           <Text fontSize="sm" fontWeight="bold">Notes:</Text>
                           <Text fontSize="sm">{currentOrder.completionNotes}</Text>
                         </Box>
                       )}
-                      <Button 
-                        leftIcon={<FiFileText />} 
-                        size="sm" 
-                        colorScheme="green" 
+                      <Button
+                        leftIcon={<FiFileText />}
+                        size="sm"
+                        colorScheme="green"
                         variant="outline"
                         mt={3}
                         onClick={() => handleGenerateReport(currentOrder)}
@@ -999,7 +1031,11 @@ export default function ServiceOrdersPage() {
                       leftIcon={<FiPhone />}
                       colorScheme="green"
                       variant="outline"
-                      onClick={() => handleCallClient(currentOrder.clientPhone)}
+                      onClick={() => {
+                        if (currentOrder?.clientPhone) {
+                          handleCallClient(currentOrder.clientPhone);
+                        }
+                      }}
                     >
                       Call Client
                     </Button>
@@ -1007,7 +1043,9 @@ export default function ServiceOrdersPage() {
                       leftIcon={<FiEdit />}
                       colorScheme="blue"
                       onClick={() => {
-                        setIsViewMode(false);
+                        if (currentOrder) {
+                          setIsViewMode(false);
+                        }
                       }}
                     >
                       Edit

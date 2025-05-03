@@ -45,7 +45,7 @@ export default function AnimatedButton({
       
       button.addEventListener('mouseleave', () => {
         gsap.to(button, { 
-          boxShadow: props.boxShadow || 'none', 
+          boxShadow: props.boxShadow as any || 'none',
           duration: 0.3 
         });
       });

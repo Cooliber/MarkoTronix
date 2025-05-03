@@ -36,7 +36,7 @@ export default function AnimatedNotification({
   position = 'top',
   children,
 }: AnimatedNotificationProps) {
-  const { elementRef, animate } = useAnimationRef();
+  const { elementRef, animate } = useAnimationRef<HTMLDivElement>();
   const [isVisible, setIsVisible] = useState(isOpen);
   
   // Colors based on status
@@ -99,7 +99,16 @@ export default function AnimatedNotification({
       setIsVisible(true);
       
       // Animate in
-      const animation = animate(() => notificationAnimation(elementRef.current as HTMLElement));
+      const tl = gsap.timeline();
+      tl.fromTo(elementRef.current, {
+        opacity: 0,
+        y: position === 'top' ? -20 : 20,
+      }, {
+        opacity: 1,
+        y: 0,
+        duration: 0.5,
+        ease: 'power2.out',
+      });
       
       // Auto-close after duration
       if (duration > 0) {
@@ -122,7 +131,7 @@ export default function AnimatedNotification({
         ease: 'power2.in',
       });
     }
-  }, [isOpen, duration, onClose, animate, elementRef, isVisible, position]);
+  }, [isOpen, duration, onClose, elementRef, isVisible, position]);
   
   // Don't render if not visible
   if (!isVisible) return null;

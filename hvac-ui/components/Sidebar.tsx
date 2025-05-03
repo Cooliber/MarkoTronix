@@ -30,7 +30,6 @@ import {
   FiTool,
   FiSliders,
 } from 'react-icons/fi';
-
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
@@ -74,11 +73,10 @@ const NavItem = ({ icon, children, path, isActive }: NavItemProps) => {
         <Icon
           mr="4"
           fontSize="16"
-          as={icon}
           _groupHover={{
             color: activeColor,
           }}
-        />
+        >{icon}</Icon>
       )}
       {children}
     </Flex>
@@ -106,69 +104,69 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </Text>
       </Flex>
       <VStack spacing={1} align="stretch" px={2}>
-        <NavItem icon={FiHome} path="/dashboard" isActive={currentPath === '/dashboard'}>
+        <NavItem icon={FiHome as unknown as ReactNode} path="/dashboard" isActive={currentPath === '/dashboard'}>
           Dashboard
         </NavItem>
         
         <Text px="4" pt="4" pb="1" fontSize="xs" fontWeight="bold" color="gray.500">
           CLIENT MANAGEMENT
         </Text>
-        <NavItem icon={FiUsers} path="/clients" isActive={currentPath.startsWith('/clients')}>
+        <NavItem icon={FiUsers as unknown as ReactNode} path="/clients" isActive={currentPath.startsWith('/clients')}>
           Clients
         </NavItem>
-        <NavItem icon={FiMail} path="/emails" isActive={currentPath.startsWith('/emails')}>
+        <NavItem icon={FiMail as unknown as ReactNode} path="/emails" isActive={currentPath.startsWith('/emails')}>
           Emails
         </NavItem>
         <NavItem
-          icon={FiFileText}
+          icon={FiFileText as unknown as ReactNode}
           path="/transcriptions"
           isActive={currentPath.startsWith('/transcriptions')}
         >
           Transcriptions
         </NavItem>
-        <NavItem icon={FiFileText} path="/offers" isActive={currentPath.startsWith('/offers')}>
+        <NavItem icon={FiFileText as unknown as ReactNode} path="/offers" isActive={currentPath.startsWith('/offers')}>
           Offers
         </NavItem>
         
         <Text px="4" pt="4" pb="1" fontSize="xs" fontWeight="bold" color="gray.500">
           SERVICE MANAGEMENT
         </Text>
-        <NavItem icon={FiCalendar} path="/calendar" isActive={currentPath.startsWith('/calendar')}>
+        <NavItem icon={FiCalendar as unknown as ReactNode} path="/calendar" isActive={currentPath.startsWith('/calendar')}>
           Calendar
         </NavItem>
         <NavItem 
-          icon={FiTool} 
+          icon={FiTool as unknown as ReactNode} 
           path="/service-orders" 
           isActive={currentPath.startsWith('/service-orders')}
         >
           Service Orders
         </NavItem>
         <NavItem 
-          icon={FiAward} 
+          icon={FiAward as unknown as ReactNode} 
           path="/warranty" 
           isActive={currentPath.startsWith('/warranty')}
         >
           Warranty Cards
         </NavItem>
-        <NavItem icon={FiMap} path="/map" isActive={currentPath.startsWith('/map')}>
+        <NavItem icon={FiMap as unknown as ReactNode} path="/map" isActive={currentPath.startsWith('/map')}>
           Map
         </NavItem>
         
         <Text px="4" pt="4" pb="1" fontSize="xs" fontWeight="bold" color="gray.500">
           INVENTORY & REPORTS
         </Text>
-        <NavItem icon={FiPackage} path="/inventory" isActive={currentPath.startsWith('/inventory')}>
+        <NavItem icon={FiPackage as unknown as ReactNode} path="/inventory" isActive={currentPath.startsWith('/inventory')}>
           Inventory
         </NavItem>
         <NavItem
-          icon={FiClipboard}
+          icon={FiClipboard as unknown as ReactNode}
           path="/reports"
           isActive={currentPath.startsWith('/reports')}
         >
           Service Reports
         </NavItem>
         <NavItem
-          icon={FiBarChart2}
+          icon={FiBarChart2 as unknown as ReactNode}
           path="/analytics"
           isActive={currentPath.startsWith('/analytics')}
         >
@@ -179,7 +177,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           SYSTEM
         </Text>
         <NavItem
-          icon={FiSliders}
+          icon={FiSliders as unknown as ReactNode}
           path="/workflow"
           isActive={currentPath.startsWith('/workflow')}
         >
