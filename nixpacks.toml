@@ -1,12 +1,12 @@
 # Root nixpacks.toml file that redirects to the hvac-ui directory
 [setup]
-nixPkgs = ["nodejs_18", "yarn", "gcc", "gnumake"]
+nixPkgs = ["nodejs_20", "npm", "gcc", "gnumake"]
 
 [phases.setup]
 workdir = "./hvac-ui"
 
 [phases.install]
-cmds = ["cd ./hvac-ui && npm install"]
+cmds = ["cd ./hvac-ui && npm ci"]
 
 [phases.build]
 cmds = ["cd ./hvac-ui && npm run build"]

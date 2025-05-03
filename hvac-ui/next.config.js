@@ -9,6 +9,8 @@ const withPWA = require('next-pwa')({
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
+  output: 'standalone',
+  poweredByHeader: false,
   env: {
     // Default environment variables that can be overridden in production
     API_URL: process.env.API_URL || 'http://localhost:3001/api',

@@ -1,19 +1,15 @@
 # Base Node.js image
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
 
 # Copy package files from hvac-ui directory
-COPY hvac-ui/package.json hvac-ui/package-lock.json* hvac-ui/yarn.lock* ./
+COPY hvac-ui/package.json hvac-ui/package-lock.json* ./
 
 # Install dependencies
-RUN \
-  if [ -f yarn.lock ]; then yarn --frozen-lockfile; \
-  elif [ -f package-lock.json ]; then npm ci; \
-  else npm install; \
-  fi
+RUN npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder

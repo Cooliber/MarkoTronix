@@ -1,27 +1,27 @@
-FROM node:18-alpine AS base
+FROM node:20-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
 WORKDIR /app
 
-# Copy package.json and yarn.lock
-COPY package.json yarn.lock* ./
+# Copy package.json and package-lock.json
+COPY hvac-ui/package.json hvac-ui/package-lock.json* ./
 
 # Install dependencies
-RUN yarn install --frozen-lockfile
+RUN npm ci
 
 # Rebuild the source code only when needed
 FROM base AS builder
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY . .
+COPY hvac-ui/ .
 
 # Set environment variables
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
 
-# Build the application
-RUN yarn build
+# Build the application with standalone output
+RUN npm run build
 
 # Production image, copy all the files and run next
 FROM base AS runner
@@ -48,6 +48,10 @@ EXPOSE 3000
 # Set the environment variable for the port
 ENV PORT 3000
 ENV HOST 0.0.0.0
+
+# Enable CORS and allow iframes
+ENV NEXT_PUBLIC_ALLOW_CORS true
+ENV NEXT_PUBLIC_ALLOW_IFRAME true
 
 # Start the application
 CMD ["node", "server.js"]
