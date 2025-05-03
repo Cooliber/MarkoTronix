@@ -1,0 +1,88 @@
+name: Deploy with Nixpacks
+
+on:
+  push:
+    branches:
+      - main
+      - staging
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  build-and-deploy:
+    name: Build and Deploy with Nixpacks
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Install Nixpacks
+        run: curl -sSL https://nixpacks.com/install.sh | bash
+      
+      - name: Set environment variables
+        working-directory: hvac-ui
+        run: |
+          if [ "${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }}" = "production" ]; then
+            cp .env.sevilla .env.production
+            # Override with production-specific values
+            echo "NEXT_PUBLIC_SITE_URL=https://hvac-crm.example.com" >> .env.production
+          else
+            cp .env.sevilla .env.production
+            # Override with staging-specific values
+            echo "NEXT_PUBLIC_SITE_URL=https://staging.hvac-crm.example.com" >> .env.production
+            echo "APP_ENV=staging" >> .env.production
+            echo "NEXT_PUBLIC_APP_ENV=staging" >> .env.production
+          fi
+      
+      - name: Build with Nixpacks
+        working-directory: hvac-ui
+        run: |
+          nixpacks build . \
+            --config ./deploy/nixpacks.toml \
+            --name hvac-crm-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }} \
+            --tag ghcr.io/${{ github.repository_owner }}/hvac-crm:${{ github.sha }}
+      
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Push Docker image
+        run: docker push ghcr.io/${{ github.repository_owner }}/hvac-crm:${{ github.sha }}
+      
+      - name: Deploy to server
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            # Pull the latest image
+            docker pull ghcr.io/${{ github.repository_owner }}/hvac-crm:${{ github.sha }}
+            
+            # Stop the existing container if it exists
+            docker stop hvac-crm-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }} || true
+            docker rm hvac-crm-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }} || true
+            
+            # Run the new container
+            docker run -d \
+              --name hvac-crm-${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }} \
+              -p ${{ github.event.inputs.environment == 'production' || github.ref == 'refs/heads/production' ? '3000:3000' : '3001:3000' }} \
+              --env-file /opt/hvac-crm/${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }}/.env \
+              --restart unless-stopped \
+              ghcr.io/${{ github.repository_owner }}/hvac-crm:${{ github.sha }}
+            
+            # Clean up old images
+            docker image prune -af

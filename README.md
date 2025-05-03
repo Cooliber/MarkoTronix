@@ -86,23 +86,59 @@ yarn start
 
 ```bash
 cd hvac-ui
-yarn build:docker
-docker run -p 3000:3000 hvac-ui
+yarn docker:build
+yarn docker:run
 ```
 
-### Using Docker Compose
+### Using Docker Compose with n8n
 
 ```bash
-docker-compose up -d
+cd hvac-ui
+yarn docker:compose
 ```
 
-### Deployment with Nixpack
+### Deployment with Nixpacks
 
-This project is configured to work with Nixpack for easy deployment:
+This project is configured to work with Nixpacks for easy deployment:
 
 ```bash
-nixpacks build ./hvac-ui -n hvac-ui
+cd hvac-ui
+yarn deploy:nixpacks
 ```
+
+### Deployment to Sevilla
+
+```bash
+cd hvac-ui
+yarn deploy:sevilla
+```
+
+### Sevilla-Ready Deployment
+
+The project includes Sevilla-ready configuration files for easy deployment:
+
+1. Copy the Sevilla environment file:
+   ```bash
+   cd hvac-ui
+   cp .env.sevilla .env.production
+   ```
+
+2. Build the application:
+   ```bash
+   yarn build:sevilla
+   ```
+
+3. Start the application:
+   ```bash
+   yarn start:sevilla
+   ```
+
+### GitHub Actions Deployment
+
+The repository includes GitHub Actions workflows for automated deployment:
+
+- `deploy-to-sevilla.yml`: Deploys to Sevilla platform
+- `deploy-with-nixpacks.yml`: Builds with Nixpacks and deploys to a server
 
 ## Environment Variables
 
