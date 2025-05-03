@@ -13,13 +13,9 @@ services:
       - NEXT_PUBLIC_API_URL=${API_URL:-http://api:8000/api}
       - NEXT_PUBLIC_WEBSOCKET_URL=${WEBSOCKET_URL:-ws://api:8000/ws}
       - API_URL=${API_URL:-http://api:8000/api}
-      - NEXT_PUBLIC_N8N_URL=${N8N_URL:-http://n8n:5678}
-      - N8N_URL=${N8N_URL:-http://n8n:5678}
-      - NEXT_PUBLIC_ENABLE_N8N_INTEGRATION=${ENABLE_N8N_INTEGRATION:-true}
       - APP_ENV=${APP_ENV:-production}
     depends_on:
       - api
-      - n8n
     networks:
       - hvac-network
     restart: unless-stopped
@@ -40,46 +36,6 @@ services:
       - hvac-network
     restart: unless-stopped
 
-  # n8n for workflow automation
-  n8n:
-    image: n8nio/n8n:latest
-    ports:
-      - "5678:5678"
-    environment:
-      - N8N_HOST=n8n
-      - N8N_PORT=5678
-      - N8N_PROTOCOL=http
-      - N8N_USER_MANAGEMENT_DISABLED=true
-      - N8N_DIAGNOSTICS_ENABLED=false
-      - N8N_HIRING_BANNER_ENABLED=false
-      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
-      - WEBHOOK_URL=http://hvac-ui:3000/api/n8n/webhook
-      - GENERIC_TIMEZONE=Europe/Warsaw
-    volumes:
-      - n8n_data:/home/node/.n8n
-    networks:
-      - hvac-network
-    restart: unless-stopped
-
-  # Database for n8n (optional)
-  db:
-    image: postgres:14-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      - POSTGRES_USER=n8n
-      - POSTGRES_PASSWORD=n8n
-      - POSTGRES_DB=n8n
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - hvac-network
-    restart: unless-stopped
-
 networks:
   hvac-network:
     driver: bridge
-
-volumes:
-  n8n_data:
-  postgres_data:

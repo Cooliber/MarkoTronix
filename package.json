@@ -1,7 +1,7 @@
 {
   "name": "markotronix-hvac-crm",
   "version": "1.0.0",
-  "description": "HVAC CRM System with n8n integration",
+  "description": "HVAC CRM System",
   "private": true,
   "workspaces": [
     "hvac-ui"
@@ -26,7 +26,6 @@
   "keywords": [
     "hvac",
     "crm",
-    "n8n",
     "workflow",
     "automation"
   ],

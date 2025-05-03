@@ -72,7 +72,6 @@ import {
   FiList
 } from 'react-icons/fi';
 import Layout from '@/components/Layout';
-import WorkflowManager from '@/components/workflow/WorkflowManager';
 
 // Mock data for workflow templates
 const workflowTemplates = [
@@ -480,7 +479,6 @@ export default function WorkflowPage() {
           <TabList mb="1em">
             <Tab>Active Workflows</Tab>
             <Tab>Workflow Templates</Tab>
-            <Tab>n8n Integration</Tab>
           </TabList>
           <TabPanels>
             {/* Active Workflows Tab */}
