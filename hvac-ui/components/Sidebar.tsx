@@ -13,6 +13,7 @@ import {
   useColorModeValue,
   VStack,
   Image,
+  Divider,
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import {
@@ -25,6 +26,9 @@ import {
   FiPackage,
   FiClipboard,
   FiBarChart2,
+  FiAward,
+  FiTool,
+  FiSliders,
 } from 'react-icons/fi';
 
 interface SidebarProps {
@@ -93,6 +97,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       w={{ base: 'full', md: 60 }}
       pos="fixed"
       h="full"
+      overflowY="auto"
     >
       <Flex h="20" alignItems="center" mx="8" justifyContent="space-between">
         <Image src="/logo.png" alt="HVAC CRM Logo" boxSize="40px" />
@@ -104,6 +109,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <NavItem icon={FiHome} path="/dashboard" isActive={currentPath === '/dashboard'}>
           Dashboard
         </NavItem>
+        
+        <Text px="4" pt="4" pb="1" fontSize="xs" fontWeight="bold" color="gray.500">
+          CLIENT MANAGEMENT
+        </Text>
         <NavItem icon={FiUsers} path="/clients" isActive={currentPath.startsWith('/clients')}>
           Clients
         </NavItem>
@@ -120,12 +129,34 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         <NavItem icon={FiFileText} path="/offers" isActive={currentPath.startsWith('/offers')}>
           Offers
         </NavItem>
+        
+        <Text px="4" pt="4" pb="1" fontSize="xs" fontWeight="bold" color="gray.500">
+          SERVICE MANAGEMENT
+        </Text>
         <NavItem icon={FiCalendar} path="/calendar" isActive={currentPath.startsWith('/calendar')}>
           Calendar
+        </NavItem>
+        <NavItem 
+          icon={FiTool} 
+          path="/service-orders" 
+          isActive={currentPath.startsWith('/service-orders')}
+        >
+          Service Orders
+        </NavItem>
+        <NavItem 
+          icon={FiAward} 
+          path="/warranty" 
+          isActive={currentPath.startsWith('/warranty')}
+        >
+          Warranty Cards
         </NavItem>
         <NavItem icon={FiMap} path="/map" isActive={currentPath.startsWith('/map')}>
           Map
         </NavItem>
+        
+        <Text px="4" pt="4" pb="1" fontSize="xs" fontWeight="bold" color="gray.500">
+          INVENTORY & REPORTS
+        </Text>
         <NavItem icon={FiPackage} path="/inventory" isActive={currentPath.startsWith('/inventory')}>
           Inventory
         </NavItem>
@@ -142,6 +173,17 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           isActive={currentPath.startsWith('/analytics')}
         >
           Analytics
+        </NavItem>
+        
+        <Text px="4" pt="4" pb="1" fontSize="xs" fontWeight="bold" color="gray.500">
+          SYSTEM
+        </Text>
+        <NavItem
+          icon={FiSliders}
+          path="/workflow"
+          isActive={currentPath.startsWith('/workflow')}
+        >
+          Workflow Automation
         </NavItem>
       </VStack>
     </Box>
