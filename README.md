@@ -77,24 +77,36 @@ docker-compose up -d
 ### Standard Build
 
 ```bash
+# From the root directory
+npm run build
+npm start
+
+# Or from the hvac-ui directory
 cd hvac-ui
-yarn build
-yarn start
+npm run build
+npm start
 ```
 
 ### Docker Build
 
 ```bash
-cd hvac-ui
-yarn docker:build
-yarn docker:run
+# From the root directory
+docker build -t hvac-crm-ui .
+docker run -p 3000:3000 --env-file .env hvac-crm-ui
+
+# Or using npm scripts
+npm run docker:build
+npm run docker:run
 ```
 
 ### Using Docker Compose with n8n
 
 ```bash
-cd hvac-ui
-yarn docker:compose
+# From the root directory
+docker-compose up -d
+
+# Or using npm scripts
+npm run docker:compose
 ```
 
 ### Deployment with Nixpacks
@@ -102,15 +114,39 @@ yarn docker:compose
 This project is configured to work with Nixpacks for easy deployment:
 
 ```bash
-cd hvac-ui
-yarn deploy:nixpacks
+# From the root directory
+nixpacks build . --name hvac-crm
+
+# Or using npm scripts
+npm run deploy:nixpacks
 ```
 
 ### Deployment to Sevilla
 
 ```bash
-cd hvac-ui
-yarn deploy:sevilla
+# From the root directory
+./deploy.sh sevilla
+
+# Or using npm scripts
+npm run deploy:sevilla
+```
+
+### Quick Deployment Script
+
+The project includes a deployment script that supports multiple platforms:
+
+```bash
+# Deploy to Sevilla (default)
+./deploy.sh
+
+# Deploy with Nixpacks
+./deploy.sh nixpacks
+
+# Deploy with Docker
+./deploy.sh docker
+
+# Deploy with Docker Compose
+./deploy.sh docker-compose
 ```
 
 ### Sevilla-Ready Deployment
@@ -119,18 +155,12 @@ The project includes Sevilla-ready configuration files for easy deployment:
 
 1. Copy the Sevilla environment file:
    ```bash
-   cd hvac-ui
    cp .env.sevilla .env.production
    ```
 
-2. Build the application:
+2. Deploy using the deployment script:
    ```bash
-   yarn build:sevilla
-   ```
-
-3. Start the application:
-   ```bash
-   yarn start:sevilla
+   ./deploy.sh sevilla
    ```
 
 ### GitHub Actions Deployment
