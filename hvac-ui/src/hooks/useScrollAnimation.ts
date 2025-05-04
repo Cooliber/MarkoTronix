@@ -50,7 +50,7 @@ export const useScrollTrigger = (options: ScrollTrigger.Vars = {}) => {
       // Apply reduced motion settings
       scrub: settings.reducedMotion ? true : false,
       ...options,
-      onUpdate: (self) => {
+      onUpdate: (self: ScrollTrigger) => {
         // Call the original onUpdate if it exists
         if (options.onUpdate) {
           options.onUpdate(self);
