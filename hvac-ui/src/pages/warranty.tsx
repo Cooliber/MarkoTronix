@@ -34,8 +34,21 @@ import {
 import { FiPlus, FiDownload, FiEdit, FiEye } from 'react-icons/fi';
 import Layout from '@/components/Layout';
 
+// Define Warranty type
+interface Warranty {
+  id: string;
+  clientName: string;
+  equipmentType: string;
+  model: string;
+  serialNumber: string;
+  installationDate: string;
+  expiryDate: string;
+  status: string;
+  notes?: string;
+}
+
 // Mock data for warranty cards
-const mockWarranties = [
+const mockWarranties: Warranty[] = [
   {
     id: 'W001',
     clientName: 'Jan Kowalski',
@@ -89,8 +102,8 @@ const equipmentTypes = [
 
 export default function WarrantyPage() {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [warranties, setWarranties] = useState(mockWarranties);
-  const [currentWarranty, setCurrentWarranty] = useState(null);
+  const [warranties, setWarranties] = useState<Warranty[]>(mockWarranties);
+  const [currentWarranty, setCurrentWarranty] = useState<Warranty | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const toast = useToast();
 
@@ -100,30 +113,38 @@ export default function WarrantyPage() {
     onOpen();
   };
 
-  const handleEdit = (warranty) => {
+  const handleEdit = (warranty: Warranty) => {
     setCurrentWarranty(warranty);
     setIsViewMode(false);
     onOpen();
   };
 
-  const handleView = (warranty) => {
+  const handleView = (warranty: Warranty) => {
     setCurrentWarranty(warranty);
     setIsViewMode(true);
     onOpen();
   };
 
-  const handleSave = (event) => {
+  const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.target);
-    const warrantyData = {
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    // Helper function to ensure string values
+    const getStringValue = (key: string): string => {
+      const value = formData.get(key);
+      return value ? value.toString() : '';
+    };
+
+    const warrantyData: Warranty = {
       id: currentWarranty ? currentWarranty.id : `W${(warranties.length + 1).toString().padStart(3, '0')}`,
-      clientName: formData.get('clientName'),
-      equipmentType: formData.get('equipmentType'),
-      model: formData.get('model'),
-      serialNumber: formData.get('serialNumber'),
-      installationDate: formData.get('installationDate'),
-      expiryDate: formData.get('expiryDate'),
-      notes: formData.get('notes'),
+      clientName: getStringValue('clientName'),
+      equipmentType: getStringValue('equipmentType'),
+      model: getStringValue('model'),
+      serialNumber: getStringValue('serialNumber'),
+      installationDate: getStringValue('installationDate'),
+      expiryDate: getStringValue('expiryDate'),
+      notes: getStringValue('notes'),
       status: 'active',
     };
 
@@ -151,7 +172,7 @@ export default function WarrantyPage() {
     onClose();
   };
 
-  const handleDownload = (warranty) => {
+  const handleDownload = (warranty: Warranty) => {
     toast({
       title: 'Warranty downloaded',
       description: `Warranty card for ${warranty.clientName} has been downloaded.`,
@@ -351,7 +372,7 @@ export default function WarrantyPage() {
                     {currentWarranty ? 'Update' : 'Create'} Warranty
                   </Button>
                 )}
-                {isViewMode && (
+                {isViewMode && currentWarranty && (
                   <Button
                     leftIcon={<FiDownload />}
                     colorScheme="blue"
