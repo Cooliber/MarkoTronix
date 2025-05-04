@@ -21,7 +21,7 @@ import {
   HStack,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../src/hooks/useAuth';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -32,45 +32,45 @@ export default function Register() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const { register } = useAuth();
   const router = useRouter();
   const toast = useToast();
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
-    
+
     if (!name.trim()) {
       newErrors.name = 'Name is required';
     }
-    
+
     if (!email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
       newErrors.email = 'Email is invalid';
     }
-    
+
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
-    
+
     if (password !== confirmPassword) {
       newErrors.confirmPassword = 'Passwords do not match';
     }
-    
+
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
-    
+
     setIsLoading(true);
 
     try {
@@ -80,7 +80,7 @@ export default function Register() {
         password,
         confirmPassword,
       });
-      
+
       toast({
         title: 'Account created successfully',
         description: 'You have been automatically logged in',
@@ -88,7 +88,7 @@ export default function Register() {
         duration: 5000,
         isClosable: true,
       });
-      
+
       router.push('/dashboard');
     } catch (error: any) {
       toast({
@@ -195,7 +195,7 @@ export default function Register() {
               >
                 Create Account
               </Button>
-              
+
               <HStack pt={4}>
                 <Text>Already have an account?</Text>
                 <Link href="/login" passHref>

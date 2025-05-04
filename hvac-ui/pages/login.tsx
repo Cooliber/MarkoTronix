@@ -19,7 +19,7 @@ import {
   Image,
 } from '@chakra-ui/react';
 import { ViewIcon, ViewOffIcon } from '@chakra-ui/icons';
-import { useAuth } from '../hooks/useAuth';
+import { useAuth } from '../src/hooks/useAuth';
 
 export default function Login() {
   const [email, setEmail] = useState('');
