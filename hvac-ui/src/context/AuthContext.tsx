@@ -10,12 +10,20 @@ interface User {
   role: string;
 }
 
+interface RegisterData {
+  name: string;
+  email: string;
+  password: string;
+  confirmPassword: string;
+}
+
 interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType>({
@@ -24,6 +32,7 @@ export const AuthContext = createContext<AuthContextType>({
   loading: true,
   login: async () => {},
   logout: async () => {},
+  register: async () => {},
 });
 
 interface AuthProviderProps {
@@ -38,13 +47,13 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   useEffect(() => {
     const initAuth = async () => {
       const token = localStorage.getItem('token');
-      
+
       if (token) {
         try {
           // Verify token is valid
           const decoded: any = jwt_decode(token);
           const currentTime = Date.now() / 1000;
-          
+
           if (decoded.exp < currentTime) {
             // Token expired
             localStorage.removeItem('token');
@@ -52,7 +61,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           } else {
             // Set token in axios headers
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-            
+
             // Get user info
             const response = await api.get('/auth/me');
             setUser(response.data);
@@ -63,7 +72,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           setUser(null);
         }
       }
-      
+
       setLoading(false);
     };
 
@@ -74,10 +83,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     try {
       const response = await api.post('/auth/login', { email, password });
       const { token, user } = response.data;
-      
+
       localStorage.setItem('token', token);
       api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      
+
       setUser(user);
     } catch (error) {
       console.error('Login error:', error);
@@ -98,6 +107,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     }
   };
 
+  const register = async (data: RegisterData) => {
+    try {
+      // Validate passwords match
+      if (data.password !== data.confirmPassword) {
+        throw new Error('Passwords do not match');
+      }
+
+      // Register the user
+      const response = await api.post('/auth/register', {
+        name: data.name,
+        email: data.email,
+        password: data.password,
+      });
+
+      // If registration is successful, automatically log in the user
+      const { token, user } = response.data;
+
+      localStorage.setItem('token', token);
+      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+      setUser(user);
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -106,6 +142,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         loading,
         login,
         logout,
+        register,
       }}
     >
       {children}

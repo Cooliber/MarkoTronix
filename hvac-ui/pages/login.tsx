@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/router';
+import Link from 'next/link';
 import {
   Box,
   Button,
@@ -106,6 +107,15 @@ export default function Login() {
               >
                 Sign In
               </Button>
+
+              <Flex pt={4} justifyContent="center">
+                <Text>Don't have an account?</Text>
+                <Link href="/register" passHref>
+                  <Text as="a" color="blue.500" fontWeight="semibold" ml={2}>
+                    Create one
+                  </Text>
+                </Link>
+              </Flex>
             </VStack>
           </form>
         </Box>

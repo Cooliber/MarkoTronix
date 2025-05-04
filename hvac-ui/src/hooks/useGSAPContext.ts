@@ -3,12 +3,15 @@ import { gsap } from 'gsap';
 import { useAnimationContext } from '../contexts/AnimationContext';
 import { useCallback, useRef } from 'react';
 
+// Define a type for the contextSafe function
+type ContextSafeFunction = <T extends (...args: any[]) => any>(fn: T) => T;
+
 /**
  * Enhanced hook that combines GSAP React integration with our animation context
  */
 export const useGSAPContext = (
   callback?: (
-    contextSafe: <T extends (...args: any[]) => any>(fn: T) => T,
+    contextSafe: ContextSafeFunction,
     scope?: gsap.Context
   ) => void,
   dependencies: any[] = []
@@ -17,7 +20,7 @@ export const useGSAPContext = (
   const animationsRef = useRef<(gsap.core.Tween | gsap.core.Timeline)[]>([]);
 
   // Apply global settings to animation config
-  const applySettings = useCallback(<T extends Record<string, any>>(config: T): T => {
+  const applySettings = useCallback((config: Record<string, any>): Record<string, any> => {
     if (!settings.enabled) {
       // If animations are disabled, make them instant
       return {
@@ -46,44 +49,47 @@ export const useGSAPContext = (
   }, [settings]);
 
   // Create a wrapper for gsap.to that applies our settings
-  const to = useCallback(<T>(
-    targets: gsap.TweenTarget,
-    vars: gsap.TweenVars,
-    position?: gsap.Position
-  ): gsap.core.Tween => {
-    // Use a simpler approach to avoid type errors
-    const animation = gsap.to(targets, applySettings(vars) as gsap.TweenVars);
-    registerAnimation(animation);
-    animationsRef.current.push(animation);
-    return animation;
-  }, [applySettings, registerAnimation]);
+  const to = useCallback(
+    (
+      targets: gsap.TweenTarget,
+      vars: gsap.TweenVars
+    ): gsap.core.Tween => {
+      const animation = gsap.to(targets, applySettings(vars) as gsap.TweenVars);
+      registerAnimation(animation);
+      animationsRef.current.push(animation);
+      return animation;
+    },
+    [applySettings, registerAnimation]
+  );
 
   // Create a wrapper for gsap.from that applies our settings
-  const from = useCallback(<T>(
-    targets: gsap.TweenTarget,
-    vars: gsap.TweenVars,
-    position?: gsap.Position
-  ): gsap.core.Tween => {
-    // Use a simpler approach to avoid type errors
-    const animation = gsap.from(targets, applySettings(vars) as gsap.TweenVars);
-    registerAnimation(animation);
-    animationsRef.current.push(animation);
-    return animation;
-  }, [applySettings, registerAnimation]);
+  const from = useCallback(
+    (
+      targets: gsap.TweenTarget,
+      vars: gsap.TweenVars
+    ): gsap.core.Tween => {
+      const animation = gsap.from(targets, applySettings(vars) as gsap.TweenVars);
+      registerAnimation(animation);
+      animationsRef.current.push(animation);
+      return animation;
+    },
+    [applySettings, registerAnimation]
+  );
 
   // Create a wrapper for gsap.fromTo that applies our settings
-  const fromTo = useCallback(<T>(
-    targets: gsap.TweenTarget,
-    fromVars: gsap.TweenVars,
-    toVars: gsap.TweenVars,
-    position?: gsap.Position
-  ): gsap.core.Tween => {
-    // Use a simpler approach to avoid type errors
-    const animation = gsap.fromTo(targets, fromVars, applySettings(toVars) as gsap.TweenVars);
-    registerAnimation(animation);
-    animationsRef.current.push(animation);
-    return animation;
-  }, [applySettings, registerAnimation]);
+  const fromTo = useCallback(
+    (
+      targets: gsap.TweenTarget,
+      fromVars: gsap.TweenVars,
+      toVars: gsap.TweenVars
+    ): gsap.core.Tween => {
+      const animation = gsap.fromTo(targets, fromVars, applySettings(toVars) as gsap.TweenVars);
+      registerAnimation(animation);
+      animationsRef.current.push(animation);
+      return animation;
+    },
+    [applySettings, registerAnimation]
+  );
 
   // Create a wrapper for gsap.timeline that registers the timeline
   const timeline = useCallback((vars?: gsap.TimelineVars): gsap.core.Timeline => {
@@ -97,6 +103,8 @@ export const useGSAPContext = (
   const context = useGSAP((contextSafe, scope) => {
     // Call the user's callback with our enhanced context
     if (callback) {
+      // We need to ignore the TypeScript error here as the types from GSAP are not fully compatible
+      // @ts-ignore
       callback(contextSafe, scope);
     }
 
