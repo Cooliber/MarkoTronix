@@ -176,10 +176,10 @@ const mockServiceOrder = {
     });
   };
 
-  const handleCallClient = (phone: string) => {
+  const handleCallClient = () => {
     toast({
       title: 'Calling client',
-      description: `Initiating call to ${phone}`,
+      description: `Initiating call to ${mockServiceOrder.clientPhone}`,
       status: 'info',
       duration: 3000,
       isClosable: true,
