@@ -11,6 +11,15 @@ const nextConfig = {
   swcMinify: true,
   output: 'standalone',
   poweredByHeader: false,
+  typescript: {
+    // During development, type errors are reported but don't fail the build
+    // In production, we want to fail the build on type errors
+    ignoreBuildErrors: process.env.NODE_ENV === 'development',
+  },
+  eslint: {
+    // During development, linting errors are reported but don't fail the build
+    ignoreDuringBuilds: process.env.NODE_ENV === 'development',
+  },
   env: {
     // Default environment variables that can be overridden in production
     API_URL: process.env.API_URL || 'http://localhost:3001/api',
