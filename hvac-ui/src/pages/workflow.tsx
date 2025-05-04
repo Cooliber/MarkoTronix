@@ -49,14 +49,14 @@ import {
   AccordionPanel,
   AccordionIcon,
 } from '@chakra-ui/react';
-import { 
-  FiPlus, 
-  FiEdit, 
-  FiEye, 
-  FiPlay, 
-  FiPause, 
-  FiCopy, 
-  FiTrash2, 
+import {
+  FiPlus,
+  FiEdit,
+  FiEye,
+  FiPlay,
+  FiPause,
+  FiCopy,
+  FiTrash2,
   FiRefreshCw,
   FiExternalLink,
   FiCheck,
@@ -73,8 +73,38 @@ import {
 } from 'react-icons/fi';
 import Layout from '@/components/Layout';
 
+// Define types for workflow and template
+interface WorkflowTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  triggers: string[];
+  actions: string[];
+  complexity: string;
+  estimatedSetupTime: string;
+  popularity: string;
+  image: string;
+}
+
+interface Workflow {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  lastRun: string | null;
+  nextRun: string | null;
+  executions: number;
+  successRate: number;
+  template: string | null;
+  createdAt: string;
+  modifiedAt: string;
+  triggers: string[];
+  actions: string[];
+}
+
 // Mock data for workflow templates
-const workflowTemplates = [
+const workflowTemplates: WorkflowTemplate[] = [
   {
     id: 'template-001',
     name: 'Client Onboarding',
@@ -150,7 +180,7 @@ const workflowTemplates = [
 ];
 
 // Mock data for active workflows
-const mockActiveWorkflows = [
+const mockActiveWorkflows: Workflow[] = [
   {
     id: 'wf-001',
     name: 'Client Welcome Sequence',
@@ -214,7 +244,7 @@ const mockActiveWorkflows = [
 ];
 
 // Status color mapping
-const statusColors = {
+const statusColors: Record<string, string> = {
   'active': 'green',
   'paused': 'yellow',
   'error': 'red',
@@ -223,22 +253,22 @@ const statusColors = {
 
 export default function WorkflowPage() {
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const [activeWorkflows, setActiveWorkflows] = useState(mockActiveWorkflows);
-  const [templates, setTemplates] = useState(workflowTemplates);
-  const [currentWorkflow, setCurrentWorkflow] = useState(null);
-  const [currentTemplate, setCurrentTemplate] = useState(null);
+  const [activeWorkflows, setActiveWorkflows] = useState<Workflow[]>(mockActiveWorkflows);
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>(workflowTemplates);
+  const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
+  const [currentTemplate, setCurrentTemplate] = useState<WorkflowTemplate | null>(null);
   const [isViewMode, setIsViewMode] = useState(false);
   const [isTemplateMode, setIsTemplateMode] = useState(false);
   const [activeTab, setActiveTab] = useState(0);
   const toast = useToast();
-  
+
   // Animation effect when component mounts
   useEffect(() => {
     try {
       // Import GSAP dynamically to avoid SSR issues
       import('gsap').then(({ gsap }) => {
         const tl = gsap.timeline();
-        
+
         tl.fromTo(
           '.page-title',
           { opacity: 0, y: -20 },
@@ -263,7 +293,7 @@ export default function WorkflowPage() {
     onOpen();
   };
 
-  const handleEdit = (workflow) => {
+  const handleEdit = (workflow: Workflow) => {
     setCurrentWorkflow(workflow);
     setCurrentTemplate(null);
     setIsViewMode(false);
@@ -271,7 +301,7 @@ export default function WorkflowPage() {
     onOpen();
   };
 
-  const handleView = (workflow) => {
+  const handleView = (workflow: Workflow) => {
     setCurrentWorkflow(workflow);
     setCurrentTemplate(null);
     setIsViewMode(true);
@@ -279,7 +309,7 @@ export default function WorkflowPage() {
     onOpen();
   };
 
-  const handleViewTemplate = (template) => {
+  const handleViewTemplate = (template: WorkflowTemplate) => {
     setCurrentTemplate(template);
     setCurrentWorkflow(null);
     setIsViewMode(true);
@@ -287,7 +317,7 @@ export default function WorkflowPage() {
     onOpen();
   };
 
-  const handleUseTemplate = (template) => {
+  const handleUseTemplate = (template: WorkflowTemplate) => {
     setCurrentTemplate(template);
     setCurrentWorkflow(null);
     setIsViewMode(false);
@@ -295,16 +325,23 @@ export default function WorkflowPage() {
     onOpen();
   };
 
-  const handleSave = (event) => {
+  const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.target);
-    
-    if (isTemplateMode) {
+    const form = event.target as HTMLFormElement;
+    const formData = new FormData(form);
+
+    // Helper function to ensure string values
+    const getStringValue = (key: string): string => {
+      const value = formData.get(key);
+      return value ? value.toString() : '';
+    };
+
+    if (isTemplateMode && currentTemplate) {
       // Creating a new workflow from a template
-      const newWorkflow = {
+      const newWorkflow: Workflow = {
         id: `wf-${(activeWorkflows.length + 1).toString().padStart(3, '0')}`,
-        name: formData.get('name'),
-        description: formData.get('description'),
+        name: getStringValue('name'),
+        description: getStringValue('description'),
         status: 'draft',
         lastRun: null,
         nextRun: null,
@@ -316,7 +353,7 @@ export default function WorkflowPage() {
         triggers: currentTemplate.triggers,
         actions: currentTemplate.actions
       };
-      
+
       setActiveWorkflows([...activeWorkflows, newWorkflow]);
       toast({
         title: 'Workflow created',
@@ -327,18 +364,18 @@ export default function WorkflowPage() {
       });
     } else if (currentWorkflow) {
       // Update existing workflow
-      const updatedWorkflow = {
+      const updatedWorkflow: Workflow = {
         ...currentWorkflow,
-        name: formData.get('name'),
-        description: formData.get('description'),
-        status: formData.get('status'),
+        name: getStringValue('name'),
+        description: getStringValue('description'),
+        status: getStringValue('status'),
         modifiedAt: new Date().toISOString()
       };
-      
-      setActiveWorkflows(activeWorkflows.map(wf => 
+
+      setActiveWorkflows(activeWorkflows.map(wf =>
         wf.id === currentWorkflow.id ? updatedWorkflow : wf
       ));
-      
+
       toast({
         title: 'Workflow updated',
         description: `Workflow "${updatedWorkflow.name}" has been updated.`,
@@ -348,10 +385,10 @@ export default function WorkflowPage() {
       });
     } else {
       // Create new workflow from scratch
-      const newWorkflow = {
+      const newWorkflow: Workflow = {
         id: `wf-${(activeWorkflows.length + 1).toString().padStart(3, '0')}`,
-        name: formData.get('name'),
-        description: formData.get('description'),
+        name: getStringValue('name'),
+        description: getStringValue('description'),
         status: 'draft',
         lastRun: null,
         nextRun: null,
@@ -363,7 +400,7 @@ export default function WorkflowPage() {
         triggers: [],
         actions: []
       };
-      
+
       setActiveWorkflows([...activeWorkflows, newWorkflow]);
       toast({
         title: 'Workflow created',
@@ -373,11 +410,11 @@ export default function WorkflowPage() {
         isClosable: true,
       });
     }
-    
+
     onClose();
   };
 
-  const handleToggleStatus = (workflow) => {
+  const handleToggleStatus = (workflow: Workflow) => {
     const newStatus = workflow.status === 'active' ? 'paused' : 'active';
     const updatedWorkflows = activeWorkflows.map(wf => {
       if (wf.id === workflow.id) {
@@ -389,9 +426,9 @@ export default function WorkflowPage() {
       }
       return wf;
     });
-    
+
     setActiveWorkflows(updatedWorkflows);
-    
+
     toast({
       title: `Workflow ${newStatus}`,
       description: `Workflow "${workflow.name}" is now ${newStatus}.`,
@@ -401,9 +438,9 @@ export default function WorkflowPage() {
     });
   };
 
-  const handleDeleteWorkflow = (workflow) => {
+  const handleDeleteWorkflow = (workflow: Workflow) => {
     setActiveWorkflows(activeWorkflows.filter(wf => wf.id !== workflow.id));
-    
+
     toast({
       title: 'Workflow deleted',
       description: `Workflow "${workflow.name}" has been deleted.`,
@@ -413,8 +450,8 @@ export default function WorkflowPage() {
     });
   };
 
-  const handleDuplicateWorkflow = (workflow) => {
-    const newWorkflow = {
+  const handleDuplicateWorkflow = (workflow: Workflow) => {
+    const newWorkflow: Workflow = {
       ...workflow,
       id: `wf-${(activeWorkflows.length + 1).toString().padStart(3, '0')}`,
       name: `${workflow.name} (Copy)`,
@@ -425,9 +462,9 @@ export default function WorkflowPage() {
       createdAt: new Date().toISOString(),
       modifiedAt: new Date().toISOString(),
     };
-    
+
     setActiveWorkflows([...activeWorkflows, newWorkflow]);
-    
+
     toast({
       title: 'Workflow duplicated',
       description: `Workflow has been duplicated as "${newWorkflow.name}".`,
@@ -437,7 +474,7 @@ export default function WorkflowPage() {
     });
   };
 
-  const handleRunNow = (workflow) => {
+  const handleRunNow = (workflow: Workflow) => {
     toast({
       title: 'Workflow triggered',
       description: `Workflow "${workflow.name}" has been manually triggered.`,
@@ -447,7 +484,7 @@ export default function WorkflowPage() {
     });
   };
 
-  const handleOpenEditor = (workflow) => {
+  const handleOpenEditor = (workflow: Workflow) => {
     toast({
       title: 'Opening n8n editor',
       description: `Opening workflow "${workflow.name}" in the n8n editor.`,
@@ -455,7 +492,7 @@ export default function WorkflowPage() {
       duration: 3000,
       isClosable: true,
     });
-    
+
     // In a real implementation, this would redirect to the n8n editor with the workflow loaded
     window.open('http://localhost:5678/workflow/' + workflow.id, '_blank');
   };
@@ -498,7 +535,7 @@ export default function WorkflowPage() {
                       <Text fontSize="sm" color="gray.600" noOfLines={2} mb={3}>
                         {workflow.description}
                       </Text>
-                      
+
                       <VStack align="stretch" spacing={2}>
                         {workflow.lastRun && (
                           <Flex justifyContent="space-between" fontSize="sm">
@@ -506,19 +543,19 @@ export default function WorkflowPage() {
                             <Text>{new Date(workflow.lastRun).toLocaleString()}</Text>
                           </Flex>
                         )}
-                        
+
                         {workflow.nextRun && (
                           <Flex justifyContent="space-between" fontSize="sm">
                             <Text color="gray.600">Next run:</Text>
                             <Text>{new Date(workflow.nextRun).toLocaleString()}</Text>
                           </Flex>
                         )}
-                        
+
                         <Flex justifyContent="space-between" fontSize="sm">
                           <Text color="gray.600">Executions:</Text>
                           <Text>{workflow.executions}</Text>
                         </Flex>
-                        
+
                         <Flex justifyContent="space-between" fontSize="sm">
                           <Text color="gray.600">Success rate:</Text>
                           <Text color={workflow.successRate >= 95 ? "green.500" : workflow.successRate >= 80 ? "yellow.500" : "red.500"}>
@@ -526,9 +563,9 @@ export default function WorkflowPage() {
                           </Text>
                         </Flex>
                       </VStack>
-                      
+
                       <Divider my={3} />
-                      
+
                       <Box>
                         <Text fontSize="sm" fontWeight="medium" mb={1}>Triggers:</Text>
                         <HStack spacing={2} flexWrap="wrap">
@@ -616,28 +653,28 @@ export default function WorkflowPage() {
                           <Image src={template.image} alt={template.name} />
                         </Box>
                       )}
-                      
+
                       <Text fontSize="sm" color="gray.600" noOfLines={2} mb={3}>
                         {template.description}
                       </Text>
-                      
+
                       <HStack spacing={4} mb={3}>
                         <VStack align="start" spacing={0}>
                           <Text fontSize="xs" color="gray.500">Complexity</Text>
                           <Text fontSize="sm" fontWeight="medium">{template.complexity}</Text>
                         </VStack>
-                        
+
                         <VStack align="start" spacing={0}>
                           <Text fontSize="xs" color="gray.500">Setup Time</Text>
                           <Text fontSize="sm" fontWeight="medium">{template.estimatedSetupTime}</Text>
                         </VStack>
-                        
+
                         <VStack align="start" spacing={0}>
                           <Text fontSize="xs" color="gray.500">Popularity</Text>
                           <Text fontSize="sm" fontWeight="medium">{template.popularity}</Text>
                         </VStack>
                       </HStack>
-                      
+
                       <Box>
                         <Text fontSize="sm" fontWeight="medium" mb={1}>Triggers:</Text>
                         <HStack spacing={2} flexWrap="wrap" mb={2}>
@@ -647,7 +684,7 @@ export default function WorkflowPage() {
                             </Tag>
                           ))}
                         </HStack>
-                        
+
                         <Text fontSize="sm" fontWeight="medium" mb={1}>Actions:</Text>
                         <HStack spacing={2} flexWrap="wrap">
                           {template.actions.map((action, index) => (
@@ -682,7 +719,7 @@ export default function WorkflowPage() {
                 ))}
               </Grid>
             </TabPanel>
-            
+
             {/* n8n Integration Tab */}
             <TabPanel p={0}>
               <Box className="n8n-integration-container">
@@ -692,7 +729,7 @@ export default function WorkflowPage() {
                     Connect your HVAC CRM with n8n workflows for advanced automation and integrations.
                   </Text>
                 </Box>
-                
+
                 <Box className="workflow-manager-container">
                   <Flex direction="column" gap={4}>
                     <Card p={4} boxShadow="md" borderRadius="lg">
@@ -707,12 +744,12 @@ export default function WorkflowPage() {
                         <Text fontSize="sm" color="gray.500">n8n server at localhost:5678</Text>
                       </HStack>
                     </Card>
-                    
+
                     <Divider />
-                    
-                    {/* Import our WorkflowManager component */}
+
+                    {/* Placeholder for WorkflowManager component */}
                     <Box className="workflow-manager-wrapper">
-                      <WorkflowManager />
+                      <Text>WorkflowManager component would be here</Text>
                     </Box>
                   </Flex>
                 </Box>
@@ -744,7 +781,7 @@ export default function WorkflowPage() {
                       <Heading size="sm" mb={2}>Description</Heading>
                       <Text>{currentTemplate.description}</Text>
                     </Box>
-                    
+
                     <Grid templateColumns="repeat(3, 1fr)" gap={4}>
                       <Box>
                         <Text fontSize="sm" color="gray.500">Category</Text>
@@ -759,16 +796,16 @@ export default function WorkflowPage() {
                         <Text fontWeight="medium">{currentTemplate.estimatedSetupTime}</Text>
                       </Box>
                     </Grid>
-                    
+
                     {currentTemplate.image && (
                       <Box borderRadius="md" overflow="hidden" my={2}>
                         <Image src={currentTemplate.image} alt={currentTemplate.name} />
                       </Box>
                     )}
-                    
+
                     <Box>
                       <Heading size="sm" mb={2}>Workflow Details</Heading>
-                      
+
                       <Accordion allowToggle defaultIndex={[0]}>
                         <AccordionItem>
                           <AccordionButton>
@@ -809,14 +846,14 @@ export default function WorkflowPage() {
                     </Box>
                   </VStack>
                 )}
-                
+
                 {isViewMode && !isTemplateMode && currentWorkflow && (
                   <VStack spacing={4} align="stretch">
                     <Box>
                       <Heading size="sm" mb={2}>Description</Heading>
                       <Text>{currentWorkflow.description}</Text>
                     </Box>
-                    
+
                     <Grid templateColumns="repeat(2, 1fr)" gap={4}>
                       <Box>
                         <Text fontSize="sm" color="gray.500">Status</Text>
@@ -837,9 +874,9 @@ export default function WorkflowPage() {
                         <Text>{currentWorkflow.template ? `Based on template` : 'Custom workflow'}</Text>
                       </Box>
                     </Grid>
-                    
+
                     <Divider />
-                    
+
                     <Grid templateColumns="repeat(2, 1fr)" gap={4}>
                       <Box>
                         <Text fontSize="sm" color="gray.500">Executions</Text>
@@ -847,7 +884,7 @@ export default function WorkflowPage() {
                       </Box>
                       <Box>
                         <Text fontSize="sm" color="gray.500">Success Rate</Text>
-                        <Text 
+                        <Text
                           fontWeight="medium"
                           color={currentWorkflow.successRate >= 95 ? "green.500" : currentWorkflow.successRate >= 80 ? "yellow.500" : "red.500"}
                         >
@@ -867,10 +904,10 @@ export default function WorkflowPage() {
                         </Box>
                       )}
                     </Grid>
-                    
+
                     <Box>
                       <Heading size="sm" mb={2}>Workflow Details</Heading>
-                      
+
                       <Accordion allowToggle defaultIndex={[0]}>
                         <AccordionItem>
                           <AccordionButton>
@@ -911,7 +948,7 @@ export default function WorkflowPage() {
                     </Box>
                   </VStack>
                 )}
-                
+
                 {!isViewMode && (
                   <VStack spacing={4} align="stretch">
                     {isTemplateMode && currentTemplate && (
@@ -927,13 +964,13 @@ export default function WorkflowPage() {
                         </Flex>
                       </Box>
                     )}
-                    
+
                     <FormControl isRequired>
                       <FormLabel>Workflow Name</FormLabel>
                       <Input
                         name="name"
                         defaultValue={
-                          currentWorkflow?.name || 
+                          currentWorkflow?.name ||
                           (isTemplateMode ? currentTemplate?.name : '')
                         }
                         placeholder="Enter workflow name"
@@ -945,7 +982,7 @@ export default function WorkflowPage() {
                       <Textarea
                         name="description"
                         defaultValue={
-                          currentWorkflow?.description || 
+                          currentWorkflow?.description ||
                           (isTemplateMode ? currentTemplate?.description : '')
                         }
                         placeholder="Enter workflow description"
@@ -966,7 +1003,7 @@ export default function WorkflowPage() {
                         </Select>
                       </FormControl>
                     )}
-                    
+
                     {isTemplateMode && currentTemplate && (
                       <Box>
                         <Heading size="xs" mb={2}>Template Details</Heading>
@@ -984,7 +1021,7 @@ export default function WorkflowPage() {
                             <Text fontSize="sm">{currentTemplate.estimatedSetupTime}</Text>
                           </Box>
                         </Grid>
-                        
+
                         <Box mb={2}>
                           <Text fontSize="xs" color="gray.500">Triggers:</Text>
                           <HStack spacing={2} flexWrap="wrap">
@@ -995,7 +1032,7 @@ export default function WorkflowPage() {
                             ))}
                           </HStack>
                         </Box>
-                        
+
                         <Box>
                           <Text fontSize="xs" color="gray.500">Actions:</Text>
                           <HStack spacing={2} flexWrap="wrap">
@@ -1015,7 +1052,7 @@ export default function WorkflowPage() {
                 <Button variant="ghost" mr={3} onClick={onClose}>
                   {isViewMode ? 'Close' : 'Cancel'}
                 </Button>
-                
+
                 {isViewMode && !isTemplateMode && currentWorkflow && (
                   <HStack spacing={2}>
                     <Button
@@ -1050,7 +1087,7 @@ export default function WorkflowPage() {
                     </Button>
                   </HStack>
                 )}
-                
+
                 {isViewMode && isTemplateMode && currentTemplate && (
                   <Button
                     leftIcon={<FiPlus />}
@@ -1062,7 +1099,7 @@ export default function WorkflowPage() {
                     Use Template
                   </Button>
                 )}
-                
+
                 {!isViewMode && (
                   <Button type="submit" colorScheme="blue">
                     {currentWorkflow ? 'Update' : 'Create'} Workflow

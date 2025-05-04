@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Button,
@@ -30,22 +30,27 @@ import {
   useToast,
   IconButton,
   Text,
+  InputGroup,
+  InputLeftElement,
+  Stack,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
 } from '@chakra-ui/react';
-import { FiPlus, FiDownload, FiEdit, FiEye } from 'react-icons/fi';
+import { FiPlus, FiDownload, FiEdit, FiEye, FiSearch, FiFilter, FiChevronDown } from 'react-icons/fi';
 import Layout from '@/components/Layout';
-
-// Define Warranty type
-interface Warranty {
-  id: string;
-  clientName: string;
-  equipmentType: string;
-  model: string;
-  serialNumber: string;
-  installationDate: string;
-  expiryDate: string;
-  status: string;
-  notes?: string;
-}
+import {
+  Warranty,
+  calculateWarrantyStatus,
+  generateWarrantyId,
+  filterWarrantiesByStatus,
+  filterWarrantiesByClient,
+  filterWarrantiesByEquipmentType,
+  sortWarranties,
+  calculateDaysRemaining,
+  isExpiringSoon
+} from '@/utils/warrantyUtils';
 
 // Mock data for warranty cards
 const mockWarranties: Warranty[] = [
@@ -127,26 +132,61 @@ export default function WarrantyPage() {
 
   const handleSave = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const form = event.target as HTMLFormElement;
-    const formData = new FormData(form);
 
-    // Helper function to ensure string values
-    const getStringValue = (key: string): string => {
-      const value = formData.get(key);
-      return value ? value.toString() : '';
-    };
+    try {
+      setIsLoading(true);
+      setError(null);
 
-    const warrantyData: Warranty = {
-      id: currentWarranty ? currentWarranty.id : `W${(warranties.length + 1).toString().padStart(3, '0')}`,
-      clientName: getStringValue('clientName'),
-      equipmentType: getStringValue('equipmentType'),
-      model: getStringValue('model'),
-      serialNumber: getStringValue('serialNumber'),
-      installationDate: getStringValue('installationDate'),
-      expiryDate: getStringValue('expiryDate'),
-      notes: getStringValue('notes'),
-      status: 'active',
-    };
+      const form = event.target as HTMLFormElement;
+      const formData = new FormData(form);
+
+      // Helper function to ensure string values
+      const getStringValue = (key: string): string => {
+        const value = formData.get(key);
+        return value ? value.toString() : '';
+      };
+
+      // Validate required fields
+      const clientName = getStringValue('clientName');
+      const equipmentType = getStringValue('equipmentType');
+      const model = getStringValue('model');
+      const serialNumber = getStringValue('serialNumber');
+      const installationDate = getStringValue('installationDate');
+      const expiryDate = getStringValue('expiryDate');
+
+      if (!clientName || !equipmentType || !model || !serialNumber || !installationDate || !expiryDate) {
+        throw new Error('Wszystkie wymagane pola muszą być wypełnione');
+      }
+
+      // Validate dates
+      const installDate = new Date(installationDate);
+      const expiryDateObj = new Date(expiryDate);
+
+      if (isNaN(installDate.getTime())) {
+        throw new Error('Data instalacji jest nieprawidłowa');
+      }
+
+      if (isNaN(expiryDateObj.getTime())) {
+        throw new Error('Data wygaśnięcia gwarancji jest nieprawidłowa');
+      }
+
+      if (installDate > expiryDateObj) {
+        throw new Error('Data wygaśnięcia gwarancji nie może być wcześniejsza niż data instalacji');
+      }
+
+      const status = calculateWarrantyStatus(expiryDate);
+
+      const warrantyData: Warranty = {
+        id: currentWarranty ? currentWarranty.id : generateWarrantyId(warranties),
+        clientName: clientName,
+        equipmentType: equipmentType,
+        model: model,
+        serialNumber: serialNumber,
+        installationDate: installationDate,
+        expiryDate: expiryDate,
+        notes: getStringValue('notes'),
+        status: status,
+      };
 
     if (currentWarranty) {
       // Update existing warranty
@@ -170,6 +210,20 @@ export default function WarrantyPage() {
       });
     }
     onClose();
+    } catch (err) {
+      console.error('Error saving warranty:', err);
+      const errorMessage = err instanceof Error ? err.message : 'Wystąpił nieoczekiwany błąd podczas zapisywania gwarancji';
+      setError(errorMessage);
+      toast({
+        title: 'Error',
+        description: errorMessage,
+        status: 'error',
+        duration: 5000,
+        isClosable: true,
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleDownload = (warranty: Warranty) => {
@@ -182,6 +236,65 @@ export default function WarrantyPage() {
     });
   };
 
+  // State for filtering and sorting
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [equipmentFilter, setEquipmentFilter] = useState<string>('all');
+  const [sortField, setSortField] = useState<keyof Warranty>('id');
+  const [sortAscending, setSortAscending] = useState(true);
+  const [filteredWarranties, setFilteredWarranties] = useState<Warranty[]>(warranties);
+
+  // State for loading and error handling
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Update filtered warranties when filters or sort options change
+  useEffect(() => {
+    try {
+      setIsLoading(true);
+      setError(null);
+
+      let result = [...warranties];
+
+      // Apply status filter
+      if (statusFilter !== 'all') {
+        result = filterWarrantiesByStatus(result, statusFilter);
+      }
+
+      // Apply equipment filter
+      if (equipmentFilter !== 'all') {
+        result = filterWarrantiesByEquipmentType(result, equipmentFilter);
+      }
+
+      // Apply search term
+      if (searchTerm) {
+        result = filterWarrantiesByClient(result, searchTerm);
+      }
+
+      // Apply sorting
+      result = sortWarranties(result, sortField, sortAscending);
+
+      setFilteredWarranties(result);
+    } catch (err) {
+      console.error('Error filtering warranties:', err);
+      setError('Wystąpił błąd podczas filtrowania danych. Spróbuj ponownie.');
+      // Fallback to unfiltered data
+      setFilteredWarranties(warranties);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [warranties, searchTerm, statusFilter, equipmentFilter, sortField, sortAscending]);
+
+  // Handle sort change
+  const handleSortChange = (field: keyof Warranty) => {
+    if (field === sortField) {
+      setSortAscending(!sortAscending);
+    } else {
+      setSortField(field);
+      setSortAscending(true);
+    }
+  };
+
   return (
     <Layout>
       <Container maxW="container.xl" py={5}>
@@ -192,22 +305,116 @@ export default function WarrantyPage() {
           </Button>
         </Flex>
 
+        {/* Search and Filter Controls */}
+        {/* Error display */}
+        {error && (
+          <Box mb={6} p={4} bg="red.50" borderRadius="md" borderLeft="4px" borderColor="red.500">
+            <Text color="red.500" fontWeight="medium">{error}</Text>
+          </Box>
+        )}
+
+        <Stack direction={{ base: 'column', md: 'row' }} spacing={4} mb={6}>
+          <InputGroup maxW={{ base: '100%', md: '300px' }}>
+            <InputLeftElement pointerEvents="none">
+              <FiSearch color="gray.300" />
+            </InputLeftElement>
+            <Input
+              placeholder="Search by client name"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              isDisabled={isLoading}
+            />
+          </InputGroup>
+
+          <Menu>
+            <MenuButton
+              as={Button}
+              rightIcon={<FiChevronDown />}
+              leftIcon={<FiFilter />}
+              variant="outline"
+              isDisabled={isLoading}
+            >
+              Status: {statusFilter === 'all' ? 'All' : statusFilter === 'active' ? 'Active' : 'Expired'}
+            </MenuButton>
+            <MenuList>
+              <MenuItem onClick={() => setStatusFilter('all')}>All</MenuItem>
+              <MenuItem onClick={() => setStatusFilter('active')}>Active</MenuItem>
+              <MenuItem onClick={() => setStatusFilter('expired')}>Expired</MenuItem>
+            </MenuList>
+          </Menu>
+
+          <Menu>
+            <MenuButton
+              as={Button}
+              rightIcon={<FiChevronDown />}
+              leftIcon={<FiFilter />}
+              variant="outline"
+              isDisabled={isLoading}
+            >
+              Equipment: {equipmentFilter === 'all' ? 'All' : equipmentFilter}
+            </MenuButton>
+            <MenuList>
+              <MenuItem onClick={() => setEquipmentFilter('all')}>All</MenuItem>
+              {equipmentTypes.map((type) => (
+                <MenuItem key={type} onClick={() => setEquipmentFilter(type)}>{type}</MenuItem>
+              ))}
+            </MenuList>
+          </Menu>
+        </Stack>
+
+        {/* Loading indicator */}
+        {isLoading && (
+          <Box textAlign="center" py={4}>
+            <Text>Ładowanie danych...</Text>
+          </Box>
+        )}
+
         <Box overflowX="auto">
           <Table variant="simple">
             <Thead>
               <Tr>
-                <Th>ID</Th>
-                <Th>Client</Th>
-                <Th>Equipment</Th>
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSortChange('id')}
+                >
+                  ID {sortField === 'id' && (sortAscending ? '↑' : '↓')}
+                </Th>
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSortChange('clientName')}
+                >
+                  Client {sortField === 'clientName' && (sortAscending ? '↑' : '↓')}
+                </Th>
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSortChange('equipmentType')}
+                >
+                  Equipment {sortField === 'equipmentType' && (sortAscending ? '↑' : '↓')}
+                </Th>
                 <Th>Model</Th>
-                <Th>Installation Date</Th>
-                <Th>Expiry Date</Th>
-                <Th>Status</Th>
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSortChange('installationDate')}
+                >
+                  Installation Date {sortField === 'installationDate' && (sortAscending ? '↑' : '↓')}
+                </Th>
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSortChange('expiryDate')}
+                >
+                  Expiry Date {sortField === 'expiryDate' && (sortAscending ? '↑' : '↓')}
+                </Th>
+                <Th
+                  cursor="pointer"
+                  onClick={() => handleSortChange('status')}
+                >
+                  Status {sortField === 'status' && (sortAscending ? '↑' : '↓')}
+                </Th>
                 <Th>Actions</Th>
               </Tr>
             </Thead>
             <Tbody>
-              {warranties.map((warranty) => (
+              {filteredWarranties.map((warranty) => (
                 <Tr key={warranty.id}>
                   <Td>{warranty.id}</Td>
                   <Td>{warranty.clientName}</Td>
@@ -216,9 +423,15 @@ export default function WarrantyPage() {
                   <Td>{warranty.installationDate}</Td>
                   <Td>{warranty.expiryDate}</Td>
                   <Td>
-                    <Badge colorScheme={warranty.status === 'active' ? 'green' : 'red'}>
-                      {warranty.status === 'active' ? 'Active' : 'Expired'}
-                    </Badge>
+                    {isExpiringSoon(warranty.expiryDate, 30) && warranty.status === 'active' ? (
+                      <Badge colorScheme="yellow">
+                        Expiring Soon ({calculateDaysRemaining(warranty.expiryDate)} days)
+                      </Badge>
+                    ) : (
+                      <Badge colorScheme={warranty.status === 'active' ? 'green' : 'red'}>
+                        {warranty.status === 'active' ? 'Active' : 'Expired'}
+                      </Badge>
+                    )}
                   </Td>
                   <Td>
                     <HStack spacing={2}>
@@ -368,7 +581,12 @@ export default function WarrantyPage() {
                   {isViewMode ? 'Close' : 'Cancel'}
                 </Button>
                 {!isViewMode && (
-                  <Button type="submit" colorScheme="blue">
+                  <Button
+                    type="submit"
+                    colorScheme="blue"
+                    isLoading={isLoading}
+                    loadingText={currentWarranty ? 'Updating...' : 'Creating...'}
+                  >
                     {currentWarranty ? 'Update' : 'Create'} Warranty
                   </Button>
                 )}
