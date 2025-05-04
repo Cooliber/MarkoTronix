@@ -45,7 +45,7 @@ const OfferList = () => {
     }
   };
 
-  const handleGetLink = async (offerId) => {
+  const handleGetLink = async (offerId: number) => {
     try {
       const response = await getOfferLink(offerId);
 
@@ -70,7 +70,7 @@ const OfferList = () => {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case 'draft':
         return 'gray';
