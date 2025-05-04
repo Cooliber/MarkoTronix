@@ -15,7 +15,7 @@ export const useGSAPContext = (
 ) => {
   const { settings, registerAnimation } = useAnimationContext();
   const animationsRef = useRef<(gsap.core.Tween | gsap.core.Timeline)[]>([]);
-  
+
   // Apply global settings to animation config
   const applySettings = useCallback(<T extends Record<string, any>>(config: T): T => {
     if (!settings.enabled) {
@@ -25,7 +25,7 @@ export const useGSAPContext = (
         duration: 0.01,
       };
     }
-    
+
     if (settings.reducedMotion) {
       // Apply reduced motion settings
       return {
@@ -36,7 +36,7 @@ export const useGSAPContext = (
         scale: config.scale ? Math.max(0.95, config.scale) : config.scale,
       };
     }
-    
+
     // Apply default settings if not specified in config
     return {
       duration: settings.duration,
@@ -44,31 +44,45 @@ export const useGSAPContext = (
       ...config,
     };
   }, [settings]);
-  
+
   // Create a wrapper for gsap.to that applies our settings
   const to = useCallback(<T>(
     targets: gsap.TweenTarget,
     vars: gsap.TweenVars,
     position?: gsap.Position
   ): gsap.core.Tween => {
-    const animation = gsap.to(targets, applySettings(vars) as gsap.TweenVars, position);
+    // Handle position parameter separately to avoid type errors
+    let animation: gsap.core.Tween;
+    if (position !== undefined) {
+      animation = gsap.to(targets, applySettings(vars) as gsap.TweenVars);
+      animation.startTime(position);
+    } else {
+      animation = gsap.to(targets, applySettings(vars) as gsap.TweenVars);
+    }
     registerAnimation(animation);
     animationsRef.current.push(animation);
     return animation;
   }, [applySettings, registerAnimation]);
-  
+
   // Create a wrapper for gsap.from that applies our settings
   const from = useCallback(<T>(
     targets: gsap.TweenTarget,
     vars: gsap.TweenVars,
     position?: gsap.Position
   ): gsap.core.Tween => {
-    const animation = gsap.from(targets, applySettings(vars) as gsap.TweenVars, position);
+    // Handle position parameter separately to avoid type errors
+    let animation: gsap.core.Tween;
+    if (position !== undefined) {
+      animation = gsap.from(targets, applySettings(vars) as gsap.TweenVars);
+      animation.startTime(position);
+    } else {
+      animation = gsap.from(targets, applySettings(vars) as gsap.TweenVars);
+    }
     registerAnimation(animation);
     animationsRef.current.push(animation);
     return animation;
   }, [applySettings, registerAnimation]);
-  
+
   // Create a wrapper for gsap.fromTo that applies our settings
   const fromTo = useCallback(<T>(
     targets: gsap.TweenTarget,
@@ -76,12 +90,19 @@ export const useGSAPContext = (
     toVars: gsap.TweenVars,
     position?: gsap.Position
   ): gsap.core.Tween => {
-    const animation = gsap.fromTo(targets, fromVars, applySettings(toVars) as gsap.TweenVars, position);
+    // Handle position parameter separately to avoid type errors
+    let animation: gsap.core.Tween;
+    if (position !== undefined) {
+      animation = gsap.fromTo(targets, fromVars, applySettings(toVars) as gsap.TweenVars);
+      animation.startTime(position);
+    } else {
+      animation = gsap.fromTo(targets, fromVars, applySettings(toVars) as gsap.TweenVars);
+    }
     registerAnimation(animation);
     animationsRef.current.push(animation);
     return animation;
   }, [applySettings, registerAnimation]);
-  
+
   // Create a wrapper for gsap.timeline that registers the timeline
   const timeline = useCallback((vars?: gsap.TimelineVars): gsap.core.Timeline => {
     const tl = gsap.timeline(vars);
@@ -89,14 +110,14 @@ export const useGSAPContext = (
     animationsRef.current.push(tl);
     return tl;
   }, [registerAnimation]);
-  
+
   // Use the GSAP React hook with our enhanced context
   const context = useGSAP((contextSafe, scope) => {
     // Call the user's callback with our enhanced context
     if (callback) {
       callback(contextSafe, scope);
     }
-    
+
     // Return a cleanup function
     return () => {
       // Kill all animations created in this context
@@ -108,7 +129,7 @@ export const useGSAPContext = (
       animationsRef.current = [];
     };
   }, dependencies);
-  
+
   return {
     ...context,
     to,

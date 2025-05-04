@@ -1,18 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { 
-  Box, 
-  Heading, 
-  Text, 
-  Button, 
-  Spinner, 
-  Alert, 
-  AlertIcon, 
-  Table, 
-  Thead, 
-  Tbody, 
-  Tr, 
-  Th, 
-  Td, 
+import {
+  Box,
+  Heading,
+  Text,
+  Button,
+  Spinner,
+  Alert,
+  AlertIcon,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
   TableContainer,
   Badge,
   Progress,
@@ -24,6 +24,11 @@ import {
   StatHelpText,
   SimpleGrid,
   useColorModeValue,
+  Tabs,
+  TabList,
+  TabPanels,
+  TabPanel,
+  Tab,
 } from '@chakra-ui/react';
 
 interface PerformanceTestResult {
@@ -52,7 +57,7 @@ export default function ContainerPerformanceTest() {
     setLoading(true);
     setError(null);
     setProgress(0);
-    
+
     // Start progress animation
     progressIntervalRef.current = setInterval(() => {
       setProgress(prev => {
@@ -62,20 +67,20 @@ export default function ContainerPerformanceTest() {
         return prev + 5;
       });
     }, 500);
-    
+
     try {
       // CPU Performance Tests
       const cpuResults = await runCPUTests();
-      
+
       // Memory Performance Tests
       const memoryResults = await runMemoryTests();
-      
+
       // Rendering Performance Tests
       const renderingResults = await runRenderingTests();
-      
+
       // Network Performance Tests
       const networkResults = await runNetworkTests();
-      
+
       // Combine results
       setResults({
         cpu: cpuResults,
@@ -92,42 +97,42 @@ export default function ContainerPerformanceTest() {
         clearInterval(progressIntervalRef.current);
         progressIntervalRef.current = null;
       }
-      
+
       // Set progress to 100%
       setProgress(100);
       setLoading(false);
     }
   };
-  
+
   // CPU Performance Tests
   const runCPUTests = async (): Promise<PerformanceTestResult[]> => {
     const results: PerformanceTestResult[] = [];
-    
+
     // Test 1: Fibonacci calculation
     const fibStart = performance.now();
     fibonacci(35); // Computationally intensive
     const fibEnd = performance.now();
-    
+
     results.push({
       name: 'Fibonacci Calculation',
       score: fibEnd - fibStart,
       unit: 'ms',
       details: 'Time to calculate Fibonacci(35)',
     });
-    
+
     // Test 2: Array operations
     const arrayStart = performance.now();
     const arr = Array.from({ length: 1000000 }, (_, i) => i);
     arr.filter(n => n % 2 === 0).map(n => n * 2).reduce((a, b) => a + b, 0);
     const arrayEnd = performance.now();
-    
+
     results.push({
       name: 'Array Operations',
       score: arrayEnd - arrayStart,
       unit: 'ms',
       details: 'Time to perform filter, map, and reduce on 1M elements',
     });
-    
+
     // Test 3: JSON operations
     const jsonStart = performance.now();
     const obj = { a: 1, b: 2, c: 3, d: 4, e: 5 };
@@ -135,21 +140,21 @@ export default function ContainerPerformanceTest() {
       JSON.parse(JSON.stringify(obj));
     }
     const jsonEnd = performance.now();
-    
+
     results.push({
       name: 'JSON Operations',
       score: jsonEnd - jsonStart,
       unit: 'ms',
       details: 'Time to stringify and parse JSON 100K times',
     });
-    
+
     return results;
   };
-  
+
   // Memory Performance Tests
   const runMemoryTests = async (): Promise<PerformanceTestResult[]> => {
     const results: PerformanceTestResult[] = [];
-    
+
     // Test 1: Memory allocation
     const memStart = performance.now();
     const arrays = [];
@@ -157,14 +162,14 @@ export default function ContainerPerformanceTest() {
       arrays.push(new Array(10000).fill(Math.random()));
     }
     const memEnd = performance.now();
-    
+
     results.push({
       name: 'Memory Allocation',
       score: memEnd - memStart,
       unit: 'ms',
       details: 'Time to allocate 100 arrays of 10K elements',
     });
-    
+
     // Test 2: Current memory usage
     if ('memory' in performance) {
       const mem = (performance as any).memory;
@@ -175,14 +180,14 @@ export default function ContainerPerformanceTest() {
           unit: 'MB',
           details: 'Current JS heap usage',
         });
-        
+
         results.push({
           name: 'Total JS Heap',
           score: mem.totalJSHeapSize / (1024 * 1024),
           unit: 'MB',
           details: 'Total allocated JS heap',
         });
-        
+
         results.push({
           name: 'JS Heap Limit',
           score: mem.jsHeapSizeLimit / (1024 * 1024),
@@ -191,19 +196,19 @@ export default function ContainerPerformanceTest() {
         });
       }
     }
-    
+
     return results;
   };
-  
+
   // Rendering Performance Tests
   const runRenderingTests = async (): Promise<PerformanceTestResult[]> => {
     const results: PerformanceTestResult[] = [];
-    
+
     // Test 1: DOM operations
     const domStart = performance.now();
     const div = document.createElement('div');
     document.body.appendChild(div);
-    
+
     for (let i = 0; i < 1000; i++) {
       const child = document.createElement('div');
       child.textContent = `Item ${i}`;
@@ -212,26 +217,26 @@ export default function ContainerPerformanceTest() {
       child.style.backgroundColor = i % 2 === 0 ? '#f0f0f0' : '#e0e0e0';
       div.appendChild(child);
     }
-    
+
     // Force reflow
     div.offsetHeight;
-    
+
     // Clean up
     document.body.removeChild(div);
     const domEnd = performance.now();
-    
+
     results.push({
       name: 'DOM Operations',
       score: domEnd - domStart,
       unit: 'ms',
       details: 'Time to create and manipulate 1000 DOM elements',
     });
-    
+
     // Test 2: Animation frame rate
     let frames = 0;
     const duration = 500; // ms
     const startTime = performance.now();
-    
+
     await new Promise<void>(resolve => {
       const countFrames = (timestamp: number) => {
         frames++;
@@ -241,32 +246,32 @@ export default function ContainerPerformanceTest() {
           resolve();
         }
       };
-      
+
       requestAnimationFrame(countFrames);
     });
-    
+
     const fps = Math.round((frames * 1000) / duration);
-    
+
     results.push({
       name: 'Animation Frame Rate',
       score: fps,
       unit: 'FPS',
       details: `Measured over ${duration}ms`,
     });
-    
+
     return results;
   };
-  
+
   // Network Performance Tests
   const runNetworkTests = async (): Promise<PerformanceTestResult[]> => {
     const results: PerformanceTestResult[] = [];
-    
+
     // Test 1: API response time
     try {
       const apiStart = performance.now();
       await fetch('/api/health');
       const apiEnd = performance.now();
-      
+
       results.push({
         name: 'API Response Time',
         score: apiEnd - apiStart,
@@ -281,13 +286,13 @@ export default function ContainerPerformanceTest() {
         details: 'Failed to fetch /api/health',
       });
     }
-    
+
     // Test 2: Mock API response time
     try {
       const mockApiStart = performance.now();
       await fetch('http://localhost:8000/api/health', { credentials: 'omit' });
       const mockApiEnd = performance.now();
-      
+
       results.push({
         name: 'Mock API Response Time',
         score: mockApiEnd - mockApiStart,
@@ -302,20 +307,20 @@ export default function ContainerPerformanceTest() {
         details: 'Failed to fetch http://localhost:8000/api/health',
       });
     }
-    
+
     // Test 3: Network latency
     try {
       const latencies: number[] = [];
-      
+
       for (let i = 0; i < 5; i++) {
         const start = performance.now();
         await fetch('/api/health');
         const end = performance.now();
         latencies.push(end - start);
       }
-      
+
       const avgLatency = latencies.reduce((a, b) => a + b, 0) / latencies.length;
-      
+
       results.push({
         name: 'Average Network Latency',
         score: avgLatency,
@@ -330,14 +335,14 @@ export default function ContainerPerformanceTest() {
         details: 'Failed to measure network latency',
       });
     }
-    
+
     return results;
   };
 
   useEffect(() => {
     // Run tests on component mount
     runPerformanceTests();
-    
+
     // Clean up interval on unmount
     return () => {
       if (progressIntervalRef.current) {
@@ -351,25 +356,25 @@ export default function ContainerPerformanceTest() {
   return (
     <Box p={4} borderWidth="1px" borderRadius="lg" bg="white" shadow="md">
       <Heading size="md" mb={4}>Container Performance Test</Heading>
-      
+
       <Text mb={4}>
         This test measures the performance of the container environment.
       </Text>
-      
+
       {loading && (
         <VStack spacing={4} mb={6}>
           <Progress value={progress} size="sm" width="100%" colorScheme="blue" />
           <Text>Running performance tests... {progress}%</Text>
         </VStack>
       )}
-      
+
       {error && (
         <Alert status="error" mb={4}>
           <AlertIcon />
           {error}
         </Alert>
       )}
-      
+
       {results && (
         <VStack spacing={6} align="stretch">
           {/* Summary Stats */}
@@ -377,13 +382,13 @@ export default function ContainerPerformanceTest() {
             <Stat p={3} borderRadius="md" bg={statBg} shadow="sm">
               <StatLabel>CPU Performance</StatLabel>
               <StatNumber>
-                {results.cpu.length > 0 
+                {results.cpu.length > 0
                   ? `${Math.round(results.cpu[0].score)}ms`
                   : 'N/A'}
               </StatNumber>
               <StatHelpText>Fibonacci calculation</StatHelpText>
             </Stat>
-            
+
             <Stat p={3} borderRadius="md" bg={statBg} shadow="sm">
               <StatLabel>Memory Usage</StatLabel>
               <StatNumber>
@@ -393,7 +398,7 @@ export default function ContainerPerformanceTest() {
               </StatNumber>
               <StatHelpText>JS Heap</StatHelpText>
             </Stat>
-            
+
             <Stat p={3} borderRadius="md" bg={statBg} shadow="sm">
               <StatLabel>Rendering</StatLabel>
               <StatNumber>
@@ -403,7 +408,7 @@ export default function ContainerPerformanceTest() {
               </StatNumber>
               <StatHelpText>Animation frame rate</StatHelpText>
             </Stat>
-            
+
             <Stat p={3} borderRadius="md" bg={statBg} shadow="sm">
               <StatLabel>Network</StatLabel>
               <StatNumber>
@@ -414,7 +419,7 @@ export default function ContainerPerformanceTest() {
               <StatHelpText>Average latency</StatHelpText>
             </Stat>
           </SimpleGrid>
-          
+
           {/* Detailed Results */}
           <Tabs variant="enclosed" colorScheme="blue">
             <TabList>
@@ -423,7 +428,7 @@ export default function ContainerPerformanceTest() {
               <Tab>Rendering</Tab>
               <Tab>Network</Tab>
             </TabList>
-            
+
             <TabPanels>
               <TabPanel>
                 <TableContainer>
@@ -447,7 +452,7 @@ export default function ContainerPerformanceTest() {
                   </Table>
                 </TableContainer>
               </TabPanel>
-              
+
               <TabPanel>
                 <TableContainer>
                   <Table variant="simple" size="sm">
@@ -470,7 +475,7 @@ export default function ContainerPerformanceTest() {
                   </Table>
                 </TableContainer>
               </TabPanel>
-              
+
               <TabPanel>
                 <TableContainer>
                   <Table variant="simple" size="sm">
@@ -493,7 +498,7 @@ export default function ContainerPerformanceTest() {
                   </Table>
                 </TableContainer>
               </TabPanel>
-              
+
               <TabPanel>
                 <TableContainer>
                   <Table variant="simple" size="sm">
@@ -518,16 +523,16 @@ export default function ContainerPerformanceTest() {
               </TabPanel>
             </TabPanels>
           </Tabs>
-          
+
           {results.timestamp && (
             <Text fontSize="sm" color="gray.500">
               Last tested: {new Date(results.timestamp).toLocaleString()}
             </Text>
           )}
-          
-          <Button 
-            colorScheme="blue" 
-            onClick={runPerformanceTests} 
+
+          <Button
+            colorScheme="blue"
+            onClick={runPerformanceTests}
             isLoading={loading}
             loadingText={`Testing (${progress}%)`}
           >
