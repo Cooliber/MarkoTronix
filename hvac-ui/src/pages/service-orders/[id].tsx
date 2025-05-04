@@ -80,7 +80,8 @@ import MobileLayout from '@/components/MobileLayout';
 import { useAnimationRef, useStaggerAnimation } from '@/hooks/useAnimation';
 import { cardEnterAnimation, listItemAnimation, pageEnterAnimation } from '@/utils/animations';
 
-const toast = useToast();
+export default function ServiceOrderDetail() {
+  const toast = useToast();
 
 // Mock data for a service order
 const mockServiceOrder = {
@@ -323,21 +324,21 @@ const mockServiceOrder = {
                   <Text fontSize="sm">{mockServiceOrder.technician}</Text>
                 </HStack>
               </Flex>
-              
-              <Progress 
-                value={mockServiceOrder.progress} 
-                size="md" 
-                colorScheme="blue" 
-                borderRadius="full" 
+
+              <Progress
+                value={mockServiceOrder.progress}
+                size="md"
+                colorScheme="blue"
+                borderRadius="full"
               />
-              
+
               {mockServiceOrder.currentActivity && (
                 <Box p={3} bg="blue.50" borderRadius="md">
                   <Text fontWeight="medium" mb={1}>Current Activity:</Text>
                   <Text>{mockServiceOrder.currentActivity}</Text>
                 </Box>
               )}
-              
+
               {mockServiceOrder.partsNeeded && mockServiceOrder.partsNeeded.length > 0 && (
                 <Box>
                   <Text fontWeight="medium" mb={1}>Parts Needed:</Text>
@@ -351,23 +352,23 @@ const mockServiceOrder = {
                   </HStack>
                 </Box>
               )}
-              
+
               <Box>
                 <Text fontWeight="medium" mb={1}>Service Checklist:</Text>
                 <VStack align="stretch" spacing={1}>
                   {mockServiceOrder.checklist.map((item) => (
-                    <Flex 
-                      key={item.id} 
-                      p={2} 
-                      bg={item.completed ? "green.50" : "gray.50"} 
+                    <Flex
+                      key={item.id}
+                      p={2}
+                      bg={item.completed ? "green.50" : "gray.50"}
                       borderRadius="md"
                       justifyContent="space-between"
                       alignItems="center"
                     >
                       <Text>{item.task}</Text>
-                      <Icon 
-                        as={item.completed ? FiCheck : FiClock} 
-                        color={item.completed ? "green.500" : "gray.400"} 
+                      <Icon
+                        as={item.completed ? FiCheck : FiClock}
+                        color={item.completed ? "green.500" : "gray.400"}
                       />
                     </Flex>
                   ))}
@@ -434,7 +435,7 @@ const mockServiceOrder = {
                 <Text fontWeight="medium" mb={1}>Problem Description:</Text>
                 <Text>{mockServiceOrder.problem}</Text>
               </Box>
-              
+
               <Box>
                 <Text fontWeight="medium" mb={1}>Notes:</Text>
                 <Text>{mockServiceOrder.notes}</Text>
@@ -461,23 +462,23 @@ const mockServiceOrder = {
                       <option value="cancelled">Cancelled</option>
                     </Select>
                   </FormControl>
-                  
+
                   <FormControl>
                     <FormLabel>Progress (%)</FormLabel>
                     <Input type="number" defaultValue={mockServiceOrder.progress} />
                   </FormControl>
-                  
+
                   <FormControl>
                     <FormLabel>Current Activity</FormLabel>
-                    <Textarea 
+                    <Textarea
                       defaultValue={mockServiceOrder.currentActivity}
                       placeholder="Describe what you're currently working on"
                     />
                   </FormControl>
-                  
+
                   <FormControl>
                     <FormLabel>Update Notes</FormLabel>
-                    <Textarea 
+                    <Textarea
                       placeholder="Add any additional notes about the service"
                     />
                   </FormControl>
