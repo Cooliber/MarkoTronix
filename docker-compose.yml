@@ -201,3 +201,4 @@ volumes:
   link-storage:
   redis-data:
   postgres-data:
+  hvac-ui-node-modules:
