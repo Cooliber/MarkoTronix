@@ -19,7 +19,7 @@ import {
 import { getOffers, getOfferPdfUrl, getOfferLink } from '../../api/offers';
 
 const OfferList = () => {
-  const [offers, setOffers] = useState([]);
+  const [offers, setOffers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const toast = useToast();
 
@@ -35,7 +35,7 @@ const OfferList = () => {
     } catch (error) {
       toast({
         title: 'Error fetching offers',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -48,10 +48,10 @@ const OfferList = () => {
   const handleGetLink = async (offerId) => {
     try {
       const response = await getOfferLink(offerId);
-      
+
       // Copy link to clipboard
       navigator.clipboard.writeText(response.link);
-      
+
       toast({
         title: 'Link copied to clipboard',
         description: 'The shareable link has been copied to your clipboard',
@@ -62,7 +62,7 @@ const OfferList = () => {
     } catch (error) {
       toast({
         title: 'Error getting offer link',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         status: 'error',
         duration: 5000,
         isClosable: true,

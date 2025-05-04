@@ -19,7 +19,7 @@ import { getEmails, triggerEmailFetch, reprocessEmail } from '../../api/emails';
 import { generateOffer } from '../../api/offers';
 
 const EmailList = () => {
-  const [emails, setEmails] = useState([]);
+  const [emails, setEmails] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const toast = useToast();
@@ -36,7 +36,7 @@ const EmailList = () => {
     } catch (error) {
       toast({
         title: 'Error fetching emails',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -62,7 +62,7 @@ const EmailList = () => {
     } catch (error) {
       toast({
         title: 'Error triggering email fetch',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -72,7 +72,7 @@ const EmailList = () => {
     }
   };
 
-  const handleReprocess = async (emailId) => {
+  const handleReprocess = async (emailId: number) => {
     try {
       await reprocessEmail(emailId);
       toast({
@@ -85,7 +85,7 @@ const EmailList = () => {
     } catch (error) {
       toast({
         title: 'Error reprocessing email',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -93,7 +93,7 @@ const EmailList = () => {
     }
   };
 
-  const handleGenerateOffer = async (emailId) => {
+  const handleGenerateOffer = async (emailId: number) => {
     try {
       const response = await generateOffer(emailId);
       toast({
@@ -106,7 +106,7 @@ const EmailList = () => {
     } catch (error) {
       toast({
         title: 'Error generating offer',
-        description: error.message,
+        description: error instanceof Error ? error.message : 'An unknown error occurred',
         status: 'error',
         duration: 5000,
         isClosable: true,
