@@ -1,12 +1,12 @@
 services:
   # HVAC CRM UI
   hvac-ui:
-    image: node:20-alpine
-    working_dir: /app
+    build:
+      context: ./hvac-ui
+      dockerfile: Dockerfile.dev
     volumes:
       - ./hvac-ui:/app
-      - /app/node_modules
-    command: sh -c "npm install && npm run dev"
+      - hvac-ui-node-modules:/app/node_modules
     ports:
       - "3000:3000"
     environment:
@@ -15,6 +15,9 @@ services:
       - NEXT_PUBLIC_WEBSOCKET_URL=${WEBSOCKET_URL:-ws://api:8000/ws}
       - API_URL=${API_URL:-http://api:8000/api}
       - APP_ENV=${APP_ENV:-development}
+      - NEXT_TELEMETRY_DISABLED=1
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
     depends_on:
       - api
     networks:
