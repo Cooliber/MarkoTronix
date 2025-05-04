@@ -154,12 +154,12 @@ async def call_llm_api(
     """Call LLM API (OpenRouter or OpenAI) with retry logic."""
     if not model:
         model = DEFAULT_LLM_MODEL
-    
+
     messages = []
     if system_prompt:
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
-    
+
     if use_openrouter and OPENROUTER_API_KEY:
         # Use OpenRouter
         headers = {
@@ -172,7 +172,7 @@ async def call_llm_api(
             "messages": messages,
             "temperature": temperature,
         }
-        
+
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 f"{OPENROUTER_URL}/chat/completions",
@@ -183,19 +183,19 @@ async def call_llm_api(
             response.raise_for_status()
             result = response.json()
             return result["choices"][0]["message"]["content"]
-    
+
     elif OPENAI_API_KEY:
         # Use OpenAI directly
         import openai
         openai.api_key = OPENAI_API_KEY
-        
+
         response = await openai.ChatCompletion.acreate(
             model=model,
             messages=messages,
             temperature=temperature,
         )
         return response.choices[0].message.content
-    
+
     else:
         raise ValueError("No API key provided for LLM service")
 
@@ -208,22 +208,22 @@ async def generate_offer_content(client_data: Dict[str, Any], service_type: str,
     Include a professional header, client information, service details, pricing, terms, and a signature section.
     Make it visually appealing and professional.
     """
-    
+
     prompt = f"""
     Generate a professional HVAC service offer with the following details:
-    
+
     Client Information:
     - Name: {client_data.get('client_name', 'N/A')}
     - Email: {client_data.get('client_email', 'N/A')}
     - Phone: {client_data.get('client_phone', 'N/A')}
     - Address: {client_data.get('client_address', 'N/A')}
-    
+
     Service Information:
     - Type: {service_type}
     - Description: {description}
     - Price: {price} {currency}
     - Valid Until: {valid_until.strftime('%Y-%m-%d')}
-    
+
     Include the following sections:
     1. Professional header with company logo placeholder
     2. Client information
@@ -231,42 +231,42 @@ async def generate_offer_content(client_data: Dict[str, Any], service_type: str,
     4. Pricing breakdown
     5. Terms and conditions
     6. Signature section for client acceptance
-    
+
     The HTML should be styled with CSS for a professional appearance.
     """
-    
+
     html_content = await call_llm_api(prompt, system_prompt)
-    
+
     # Ensure the response is valid HTML
     if not html_content.strip().startswith("<"):
         html_content = f"<html><body>{html_content}</body></html>"
-    
+
     return html_content
 
 async def generate_pdf_from_html(html_content: str, output_path: Path) -> Path:
     """Generate PDF from HTML content using WeasyPrint."""
     from weasyprint import HTML
-    
+
     # Ensure the directory exists
     output_path.parent.mkdir(exist_ok=True, parents=True)
-    
+
     # Generate PDF
     HTML(string=html_content).write_pdf(output_path)
-    
+
     return output_path
 
 async def generate_pdf_with_puppeteer(html_content: str, output_path: Path) -> Path:
     """Generate PDF from HTML content using Puppeteer."""
     from pyppeteer import launch
-    
+
     # Ensure the directory exists
     output_path.parent.mkdir(exist_ok=True, parents=True)
-    
+
     # Write HTML to a temporary file
     temp_html_path = output_path.with_suffix('.html')
     with open(temp_html_path, 'w') as f:
         f.write(html_content)
-    
+
     # Launch browser and generate PDF
     browser = await launch(
         args=['--no-sandbox', '--disable-setuid-sandbox'],
@@ -276,24 +276,24 @@ async def generate_pdf_with_puppeteer(html_content: str, output_path: Path) -> P
     await page.goto(f'file://{temp_html_path}', {'waitUntil': 'networkidle0'})
     await page.pdf({'path': str(output_path), 'format': 'A4', 'printBackground': True})
     await browser.close()
-    
+
     # Clean up temporary HTML file
     temp_html_path.unlink()
-    
+
     return output_path
 
 def create_jwt_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT token."""
     to_encode = data.copy()
-    
+
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
         expire = datetime.utcnow() + timedelta(hours=24)
-    
+
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm="HS256")
-    
+
     return encoded_jwt
 
 # FastAPI app
@@ -316,6 +316,37 @@ app.mount("/storage", StaticFiles(directory=str(STORAGE_PATH)), name="storage")
 def read_root():
     return {"status": "ok", "service": "HVAC CRM Offer Generation Service"}
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint for container monitoring."""
+    # Check database connection
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db_status = "ok"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    finally:
+        db.close()
+
+    # Check Redis connection
+    try:
+        redis_client = redis.from_url(REDIS_URL)
+        redis_client.ping()
+        redis_status = "ok"
+    except Exception as e:
+        redis_status = f"error: {str(e)}"
+
+    return {
+        "status": "ok",
+        "service": "HVAC CRM Offer Generation Service",
+        "timestamp": datetime.now(datetime.timezone.utc).isoformat(),
+        "dependencies": {
+            "database": db_status,
+            "redis": redis_status
+        }
+    }
+
 @app.post("/offers", response_model=OfferResponse, status_code=201)
 async def create_offer(
     offer: OfferCreate,
@@ -325,7 +356,7 @@ async def create_offer(
     """Create a new offer."""
     # Calculate valid_until date
     valid_until = datetime.utcnow() + timedelta(days=offer.valid_days)
-    
+
     # Generate HTML content
     client_data = {
         "client_name": offer.client_name,
@@ -333,7 +364,7 @@ async def create_offer(
         "client_phone": offer.client_phone,
         "client_address": offer.client_address,
     }
-    
+
     html_content = await generate_offer_content(
         client_data,
         offer.service_type,
@@ -342,7 +373,7 @@ async def create_offer(
         offer.currency,
         valid_until
     )
-    
+
     # Create offer in database
     db_offer = Offer(
         email_id=offer.email_id,
@@ -361,10 +392,10 @@ async def create_offer(
     db.add(db_offer)
     db.commit()
     db.refresh(db_offer)
-    
+
     # Generate PDF in background
     background_tasks.add_task(generate_pdf_for_offer, db_offer.id)
-    
+
     return db_offer
 
 @app.post("/offers/generate", response_model=OfferResponse)
@@ -375,19 +406,19 @@ async def generate_offer_from_email(
 ):
     """Generate an offer from email data."""
     email_id = request.email_id
-    
+
     # Get email and entity data
     email = db.query(Email).filter(Email.id == email_id).first()
     if not email:
         raise HTTPException(status_code=404, detail=f"Email with ID {email_id} not found")
-    
+
     entity = db.query(EmailEntity).filter(EmailEntity.email_id == email_id).first()
     if not entity:
         raise HTTPException(status_code=404, detail=f"No entity data found for email {email_id}")
-    
+
     # Create offer data
     valid_until = datetime.utcnow() + timedelta(days=30)
-    
+
     # Extract price from estimated_price field
     price = 0.0
     if entity.estimated_price:
@@ -396,7 +427,7 @@ async def generate_offer_from_email(
         price_match = re.search(r'(\d+(?:\.\d+)?)', entity.estimated_price)
         if price_match:
             price = float(price_match.group(1))
-    
+
     # Generate HTML content
     client_data = {
         "client_name": entity.client_name or "Client",
@@ -404,12 +435,12 @@ async def generate_offer_from_email(
         "client_phone": entity.client_phone,
         "client_address": entity.client_address,
     }
-    
+
     service_type = entity.service_type or "HVAC Service"
     description = f"Service requested via email: {email.subject}\n\n"
     if entity.notes:
         description += f"Notes: {entity.notes}"
-    
+
     html_content = await generate_offer_content(
         client_data,
         service_type,
@@ -418,7 +449,7 @@ async def generate_offer_from_email(
         "PLN",
         valid_until
     )
-    
+
     # Create offer in database
     db_offer = Offer(
         email_id=email_id,
@@ -437,10 +468,10 @@ async def generate_offer_from_email(
     db.add(db_offer)
     db.commit()
     db.refresh(db_offer)
-    
+
     # Generate PDF in background
     background_tasks.add_task(generate_pdf_for_offer, db_offer.id)
-    
+
     return db_offer
 
 @app.get("/offers", response_model=List[OfferResponse])
@@ -463,7 +494,7 @@ def get_offer_html(offer_id: int, db: Session = Depends(get_db)):
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
         raise HTTPException(status_code=404, detail="Offer not found")
-    
+
     return JSONResponse(content={"html": offer.html_content})
 
 @app.get("/offers/{offer_id}/pdf")
@@ -472,14 +503,14 @@ def get_offer_pdf(offer_id: int, db: Session = Depends(get_db)):
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
         raise HTTPException(status_code=404, detail="Offer not found")
-    
+
     if not offer.pdf_path:
         raise HTTPException(status_code=404, detail="PDF not yet generated for this offer")
-    
+
     pdf_path = Path(offer.pdf_path)
     if not pdf_path.exists():
         raise HTTPException(status_code=404, detail="PDF file not found")
-    
+
     return FileResponse(
         path=pdf_path,
         filename=f"offer_{offer_id}.pdf",
@@ -492,7 +523,7 @@ def update_offer_status(offer_id: int, status_update: OfferUpdateStatus, db: Ses
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
         raise HTTPException(status_code=404, detail="Offer not found")
-    
+
     # Validate status
     valid_statuses = ["draft", "sent", "accepted", "rejected"]
     if status_update.status not in valid_statuses:
@@ -500,13 +531,13 @@ def update_offer_status(offer_id: int, status_update: OfferUpdateStatus, db: Ses
             status_code=400,
             detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
         )
-    
+
     # Update status
     offer.status = status_update.status
     offer.updated_at = datetime.utcnow()
     db.commit()
     db.refresh(offer)
-    
+
     return offer
 
 @app.post("/offers/{offer_id}/regenerate-pdf")
@@ -515,10 +546,10 @@ async def regenerate_pdf(offer_id: int, background_tasks: BackgroundTasks, db: S
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
         raise HTTPException(status_code=404, detail="Offer not found")
-    
+
     # Generate PDF in background
     background_tasks.add_task(generate_pdf_for_offer, offer.id)
-    
+
     return {"status": "success", "message": "PDF regeneration started"}
 
 @app.get("/offers/{offer_id}/token")
@@ -527,14 +558,14 @@ def get_offer_token(offer_id: int, db: Session = Depends(get_db)):
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
         raise HTTPException(status_code=404, detail="Offer not found")
-    
+
     # Create token with 24-hour expiry
     token_data = {
         "sub": str(offer_id),
         "type": "offer_access",
     }
     token = create_jwt_token(token_data, timedelta(hours=24))
-    
+
     return {"token": token}
 
 # Background tasks
@@ -547,13 +578,13 @@ async def generate_pdf_for_offer(offer_id: int):
         if not offer:
             logger.error(f"Offer {offer_id} not found")
             return
-        
+
         # Create PDF filename and path
         pdf_filename = f"offer_{offer_id}_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}.pdf"
         pdf_dir = STORAGE_PATH / "offers" / str(offer_id)
         pdf_dir.mkdir(exist_ok=True, parents=True)
         pdf_path = pdf_dir / pdf_filename
-        
+
         # Generate PDF
         try:
             await generate_pdf_with_puppeteer(offer.html_content, pdf_path)
@@ -561,16 +592,16 @@ async def generate_pdf_for_offer(offer_id: int):
             logger.error(f"Error generating PDF with Puppeteer: {str(e)}")
             # Fallback to WeasyPrint
             await generate_pdf_from_html(offer.html_content, pdf_path)
-        
+
         # Update offer with PDF path
         offer.pdf_path = str(pdf_path)
         db.commit()
-        
+
         logger.info(f"PDF generated for offer {offer_id}: {pdf_path}")
-    
+
     except Exception as e:
         logger.error(f"Error generating PDF for offer {offer_id}: {str(e)}")
-    
+
     finally:
         db.close()
 

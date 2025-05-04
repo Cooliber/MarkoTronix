@@ -312,6 +312,37 @@ app.mount("/storage", StaticFiles(directory=str(STORAGE_PATH)), name="storage")
 def read_root():
     return {"status": "ok", "service": "HVAC CRM Link & e-Podpis Service"}
 
+@app.get("/health")
+def health_check():
+    """Health check endpoint for container monitoring."""
+    # Check database connection
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db_status = "ok"
+    except Exception as e:
+        db_status = f"error: {str(e)}"
+    finally:
+        db.close()
+
+    # Check Redis connection
+    try:
+        redis_client = redis.from_url(REDIS_URL)
+        redis_client.ping()
+        redis_status = "ok"
+    except Exception as e:
+        redis_status = f"error: {str(e)}"
+
+    return {
+        "status": "ok",
+        "service": "HVAC CRM Link & e-Podpis Service",
+        "timestamp": datetime.now(datetime.timezone.utc).isoformat(),
+        "dependencies": {
+            "database": db_status,
+            "redis": redis_status
+        }
+    }
+
 @app.get("/offers/{offer_id}/link")
 def generate_offer_link(offer_id: int, db: Session = Depends(get_db)):
     """Generate a short-lived link to view an offer."""

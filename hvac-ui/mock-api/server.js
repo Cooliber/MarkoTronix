@@ -3,6 +3,11 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const http = require('http');
 const WebSocket = require('ws');
+const fs = require('fs');
+const path = require('path');
+
+// Import routes
+const settingsRoutes = require('./routes/settings');
 
 // Create Express app
 const app = express();
@@ -146,6 +151,9 @@ app.post('/api/n8n/webhook', (req, res) => {
     timestamp: new Date().toISOString()
   });
 });
+
+// Mount routes
+app.use('/api/settings', settingsRoutes);
 
 // Start the server
 server.listen(port, () => {

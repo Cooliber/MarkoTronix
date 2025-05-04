@@ -250,7 +250,12 @@ async def email_fetcher():
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on application startup."""
-    asyncio.create_task(email_fetcher())
+    # Only start email fetcher if mail server credentials are configured
+    if all([MAIL_SERVER, MAIL_USERNAME, MAIL_PASSWORD]) and MAIL_SERVER != "imap.example.com":
+        logger.info("Starting email fetcher with configured mail server")
+        asyncio.create_task(email_fetcher())
+    else:
+        logger.warning("Mail server not properly configured. Email fetcher not started.")
 
 # API endpoints
 @app.get("/")

@@ -29,6 +29,7 @@ import {
   FiAward,
   FiTool,
   FiSliders,
+  FiSettings,
 } from 'react-icons/fi';
 interface SidebarProps {
   isOpen: boolean;
@@ -182,6 +183,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           isActive={currentPath.startsWith('/workflow')}
         >
           Workflow Automation
+        </NavItem>
+        <NavItem
+          icon={FiSettings as unknown as ReactNode}
+          path="/settings"
+          isActive={currentPath.startsWith('/settings')}
+        >
+          System Settings
         </NavItem>
       </VStack>
     </Box>
