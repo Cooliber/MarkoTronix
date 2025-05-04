@@ -21,18 +21,18 @@ const wss = new WebSocket.Server({ server });
 // WebSocket connections
 wss.on('connection', (ws) => {
   console.log('Client connected to WebSocket');
-  
+
   // Send welcome message
   ws.send(JSON.stringify({
     type: 'connection',
     message: 'Connected to HVAC CRM WebSocket server',
     timestamp: new Date().toISOString()
   }));
-  
+
   // Handle messages
   ws.on('message', (message) => {
     console.log('Received message:', message);
-    
+
     // Echo the message back
     ws.send(JSON.stringify({
       type: 'echo',
@@ -40,7 +40,7 @@ wss.on('connection', (ws) => {
       timestamp: new Date().toISOString()
     }));
   });
-  
+
   // Handle disconnection
   ws.on('close', () => {
     console.log('Client disconnected from WebSocket');
@@ -51,6 +51,17 @@ wss.on('connection', (ws) => {
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     status: 'ok',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Container test endpoint
+app.get('/api/container-test', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    message: 'Container is working properly',
+    container: 'api',
+    environment: process.env.NODE_ENV || 'development',
     timestamp: new Date().toISOString()
   });
 });

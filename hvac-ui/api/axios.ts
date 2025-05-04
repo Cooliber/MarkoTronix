@@ -1,7 +1,13 @@
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
+// Main API URL for the mock API
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+
+// Microservice URLs
+export const MAIL_SERVICE_URL = process.env.NEXT_PUBLIC_MAIL_SERVICE_URL || 'http://localhost:8001';
+export const OFFER_SERVICE_URL = process.env.NEXT_PUBLIC_OFFER_SERVICE_URL || 'http://localhost:8002';
+export const LINK_SERVICE_URL = process.env.NEXT_PUBLIC_LINK_SERVICE_URL || 'http://localhost:8003';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -14,28 +20,28 @@ export const api = axios.create({
 api.interceptors.request.use(
   async (config) => {
     const token = localStorage.getItem('token');
-    
+
     if (token) {
       try {
         const decoded: any = jwtDecode(token);
         const currentTime = Date.now() / 1000;
-        
+
         // If token is expired and we're not already trying to refresh
         if (decoded.exp < currentTime && !config.url?.includes('/auth/refresh')) {
           // Try to refresh the token
           const refreshToken = localStorage.getItem('refreshToken');
-          
+
           if (refreshToken) {
             try {
               const response = await axios.post(`${API_URL}/auth/refresh`, {
                 refresh_token: refreshToken,
               });
-              
+
               const { access_token, refresh_token } = response.data;
-              
+
               localStorage.setItem('token', access_token);
               localStorage.setItem('refreshToken', refresh_token);
-              
+
               // Update the request header with the new token
               config.headers.Authorization = `Bearer ${access_token}`;
             } catch (error) {
@@ -63,7 +69,7 @@ api.interceptors.request.use(
         return Promise.reject(error);
       }
     }
-    
+
     return config;
   },
   (error) => {
@@ -78,31 +84,31 @@ api.interceptors.response.use(
   },
   async (error) => {
     const originalRequest = error.config;
-    
+
     // If the error is 401 and we haven't already tried to refresh
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true;
-      
+
       try {
         const refreshToken = localStorage.getItem('refreshToken');
-        
+
         if (!refreshToken) {
           throw new Error('No refresh token available');
         }
-        
+
         const response = await axios.post(`${API_URL}/auth/refresh`, {
           refresh_token: refreshToken,
         });
-        
+
         const { access_token, refresh_token } = response.data;
-        
+
         localStorage.setItem('token', access_token);
         localStorage.setItem('refreshToken', refresh_token);
-        
+
         // Update the request header with the new token
         api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
-        
+
         // Retry the original request
         return api(originalRequest);
       } catch (refreshError) {
@@ -113,7 +119,7 @@ api.interceptors.response.use(
         return Promise.reject(refreshError);
       }
     }
-    
+
     return Promise.reject(error);
   }
 );
