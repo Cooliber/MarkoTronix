@@ -1,5 +1,5 @@
 # Use Node.js 20 Alpine as the base image
-FROM node:20-alpine
+FROM node:20.11.1-alpine3.19
 
 # Set working directory
 WORKDIR /app
@@ -21,6 +21,8 @@ ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
 
 # Expose port
 EXPOSE 3000

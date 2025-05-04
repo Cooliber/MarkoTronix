@@ -5,8 +5,10 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:prod": "tsc && next build",
     "start": "next start",
     "lint": "next lint",
+    "type-check": "tsc --noEmit",
     "export": "next export",
     "build:standalone": "next build && next export",
     "build:docker": "docker build -t hvac-ui .",
