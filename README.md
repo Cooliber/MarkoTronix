@@ -22,19 +22,19 @@ A Next.js Progressive Web Application with:
 - **GSAP Animations**: Smooth transitions and interactive elements
 - **Multi-language Support**: English and Polish interfaces
 
-### Backend (hvac-crm-system)
+### Backend Services
 
 A Docker-based backend system with:
 
-- **API Service**: FastAPI REST API
-- **Worker Service**: Celery for background task processing
-- **Database**: PostgreSQL (Supabase) for data storage
+- **API Service (hvac-crm-system/services/api)**: FastAPI REST API for core functionality
+- **Worker Service (hvac-crm-system/services/worker)**: Celery for background task processing
+- **Mail Ingest Service (mail-ingest-service)**: Automated email processing and attachment handling
+- **Offer Generation Service (offer-generation)**: AI-powered offer creation and PDF generation
+- **Link Service (link-service)**: Shareable links and e-signature integration
+- **Database**: PostgreSQL for local development, Supabase for production
 - **Cache & Message Broker**: Redis
-- **Storage**: MinIO (S3-compatible) for file storage
-- **Vector Database**: Qdrant for embeddings and similarity search
-- **Reverse Proxy**: Nginx for routing and SSL termination
+- **Storage**: Local file system for development, Supabase Storage for production
 - **Monitoring**: Prometheus, Grafana, and Jaeger for observability
-- **Workflow Automation**: Integrated workflow automation system
 
 ## Documentation
 
@@ -50,7 +50,8 @@ A Docker-based backend system with:
 
 - Node.js 20+
 - npm
-- Docker (optional, for containerized deployment)
+- Docker and Docker Compose
+- Supabase account (for production)
 
 ### Frontend Setup
 
@@ -65,12 +66,58 @@ npm run dev
 ### Backend Setup
 
 ```bash
-cd hvac-crm-system
-cp .env.example .env
-# Update the .env file with your configuration
+# Set up environment files for each service
+cp hvac-crm-system/.env.example hvac-crm-system/.env
+cp mail-ingest-service/.env.example mail-ingest-service/.env
+cp offer-generation/.env.example offer-generation/.env
+cp link-service/.env.example link-service/.env
+
+# Update the .env files with your configuration
+# Start all services
 docker-compose up -d
-./init.sh
 ```
+
+## Microservices Architecture
+
+The system uses a microservices architecture with the following components:
+
+### Mail Ingest Service
+
+- **Purpose**: Automatically fetch and process emails
+- **Features**:
+  - IMAP integration for email fetching
+  - Attachment extraction and storage
+  - Email categorization and routing
+  - Webhook endpoint for external email forwarding
+
+### Offer Generation Service
+
+- **Purpose**: Create and manage customer offers
+- **Features**:
+  - AI-powered offer content generation
+  - PDF generation with customizable templates
+  - Offer versioning and tracking
+  - Integration with email service for delivery
+
+### Link Service
+
+- **Purpose**: Generate shareable links and handle e-signatures
+- **Features**:
+  - Secure link generation for offers and documents
+  - Integration with e-signature providers (DocuSign, HelloSign)
+  - Signature status tracking
+  - Webhook endpoints for signature events
+
+## Supabase Integration
+
+The system is designed to work with Supabase for production environments:
+
+- **Database**: PostgreSQL database hosted on Supabase
+- **Storage**: Supabase Storage for file storage (attachments, PDFs, etc.)
+- **Authentication**: Supabase Auth for user authentication
+- **Realtime**: Supabase Realtime for live updates
+
+Each service can be configured to use its own Supabase project for isolation and security.
 
 ## Building for Production
 
@@ -134,62 +181,9 @@ npm run deploy:nixpacks
 npm run deploy:sevilla
 ```
 
-### Quick Deployment Script
-
-The project includes a deployment script that supports multiple platforms:
-
-```bash
-# Deploy to Sevilla (default)
-./deploy.sh
-
-# Deploy with Nixpacks
-./deploy.sh nixpacks
-
-# Deploy with Docker
-PORT=8080 API_URL=https://api.example.com/api ./deploy.sh docker
-
-# Deploy with Docker Compose
-./deploy.sh docker-compose
-
-# Deploy standalone (frontend only)
-./deploy.sh standalone
-```
-
-You can customize the deployment with environment variables:
-
-```bash
-PORT=8080 API_URL=https://api.example.com/api APP_ENV=production ./deploy.sh docker
-```
-
-### Sevilla-Ready Deployment
-
-The project includes Sevilla-ready configuration files for easy deployment:
-
-1. Copy the Sevilla environment file:
-   ```bash
-   cp .env.sevilla .env.production
-   ```
-
-2. Deploy using the deployment script:
-   ```bash
-   ./deploy.sh sevilla
-   ```
-
-### GitHub Actions Deployment
-
-The repository includes GitHub Actions workflows for automated deployment:
-
-- `deploy-to-sevilla.yml`: Deploys to Sevilla platform
-- `deploy-with-nixpacks.yml`: Builds with Nixpacks and deploys to a server
-
 ## Environment Variables
 
-See `.env.example` for all available environment variables. The most important ones are:
-
-- `API_URL`: URL of the backend API
-- `APP_ENV`: Application environment (development, production)
-- `PORT`: Port to run the application on
-- `HOST`: Host to bind the application to
+See `.env.example` files in each service directory for all available environment variables.
 
 ## Features
 
@@ -205,6 +199,9 @@ See `.env.example` for all available environment variables. The most important o
 - **Multi-language Support**: English and Polish interfaces
 - **Responsive Design**: Optimized for all screen sizes
 - **Workflow Automation**: Integrated business process automation
+- **Email Processing**: Automated email handling and response
+- **Offer Generation**: AI-powered offer creation and PDF generation
+- **E-Signature Integration**: DocuSign and HelloSign integration
 
 ## License
 

@@ -37,6 +37,93 @@ services:
       - hvac-network
     restart: unless-stopped
 
+  # Mail Ingest Service
+  mail-ingest:
+    build:
+      context: ./mail-ingest-service
+    volumes:
+      - ./mail-ingest-service:/app
+      - mail-attachments:/app/attachments
+    ports:
+      - "8001:8000"
+    env_file:
+      - ./mail-ingest-service/.env
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - hvac-network
+    restart: unless-stopped
+
+  # Offer Generation Service
+  offer-generation:
+    build:
+      context: ./offer-generation
+    volumes:
+      - ./offer-generation:/app
+      - offer-storage:/app/storage
+    ports:
+      - "8002:8000"
+    env_file:
+      - ./offer-generation/.env
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - hvac-network
+    restart: unless-stopped
+
+  # Link Service
+  link-service:
+    build:
+      context: ./link-service
+    volumes:
+      - ./link-service:/app
+      - link-storage:/app/storage
+    ports:
+      - "8003:8000"
+    env_file:
+      - ./link-service/.env
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - hvac-network
+    restart: unless-stopped
+
+  # Redis for message queue
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - hvac-network
+    restart: unless-stopped
+
+  # PostgreSQL for local development
+  postgres:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: hvac_crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - hvac-network
+    restart: unless-stopped
+
 networks:
   hvac-network:
     driver: bridge
+
+volumes:
+  mail-attachments:
+  offer-storage:
+  link-storage:
+  redis-data:
+  postgres-data:

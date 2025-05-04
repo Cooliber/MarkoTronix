@@ -15,6 +15,7 @@ from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 
 # Import routers
 from app.routers import auth, clients, emails, transcriptions, offers, services, dashboard
+from app.routers.gateway import router as gateway_router
 
 # Import database and settings
 from app.core.config import settings
@@ -62,6 +63,7 @@ app.include_router(transcriptions.router, prefix="/transcriptions", tags=["Trans
 app.include_router(offers.router, prefix="/offers", tags=["Offers"])
 app.include_router(services.router, prefix="/services", tags=["Services"])
 app.include_router(dashboard.router, prefix="/dashboard", tags=["Dashboard"])
+app.include_router(gateway_router, tags=["Gateway"])
 
 @app.get("/health", tags=["Health"])
 async def health_check() -> Dict[str, Any]:
