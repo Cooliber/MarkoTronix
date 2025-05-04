@@ -51,14 +51,8 @@ export const useGSAPContext = (
     vars: gsap.TweenVars,
     position?: gsap.Position
   ): gsap.core.Tween => {
-    // Handle position parameter separately to avoid type errors
-    let animation: gsap.core.Tween;
-    if (position !== undefined) {
-      animation = gsap.to(targets, applySettings(vars) as gsap.TweenVars);
-      animation.startTime(position);
-    } else {
-      animation = gsap.to(targets, applySettings(vars) as gsap.TweenVars);
-    }
+    // Use a simpler approach to avoid type errors
+    const animation = gsap.to(targets, applySettings(vars) as gsap.TweenVars);
     registerAnimation(animation);
     animationsRef.current.push(animation);
     return animation;
@@ -70,14 +64,8 @@ export const useGSAPContext = (
     vars: gsap.TweenVars,
     position?: gsap.Position
   ): gsap.core.Tween => {
-    // Handle position parameter separately to avoid type errors
-    let animation: gsap.core.Tween;
-    if (position !== undefined) {
-      animation = gsap.from(targets, applySettings(vars) as gsap.TweenVars);
-      animation.startTime(position);
-    } else {
-      animation = gsap.from(targets, applySettings(vars) as gsap.TweenVars);
-    }
+    // Use a simpler approach to avoid type errors
+    const animation = gsap.from(targets, applySettings(vars) as gsap.TweenVars);
     registerAnimation(animation);
     animationsRef.current.push(animation);
     return animation;
@@ -90,14 +78,8 @@ export const useGSAPContext = (
     toVars: gsap.TweenVars,
     position?: gsap.Position
   ): gsap.core.Tween => {
-    // Handle position parameter separately to avoid type errors
-    let animation: gsap.core.Tween;
-    if (position !== undefined) {
-      animation = gsap.fromTo(targets, fromVars, applySettings(toVars) as gsap.TweenVars);
-      animation.startTime(position);
-    } else {
-      animation = gsap.fromTo(targets, fromVars, applySettings(toVars) as gsap.TweenVars);
-    }
+    // Use a simpler approach to avoid type errors
+    const animation = gsap.fromTo(targets, fromVars, applySettings(toVars) as gsap.TweenVars);
     registerAnimation(animation);
     animationsRef.current.push(animation);
     return animation;
