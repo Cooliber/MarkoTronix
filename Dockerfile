@@ -1,59 +1,31 @@
 # Base Node.js image
-FROM node:20-alpine AS base
+FROM node:20.11.1-alpine3.19 AS base
 
-# Install dependencies only when needed
-FROM base AS deps
+# Set working directory
 WORKDIR /app
-
-# Copy package files from hvac-ui directory
-COPY hvac-ui/package.json hvac-ui/package-lock.json* ./
 
 # Install dependencies
-RUN npm install
+COPY hvac-ui/package.json hvac-ui/package-lock.json* ./
+RUN apk add --no-cache libc6-compat && \
+    npm install
 
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-
-# Copy dependencies
-COPY --from=deps /app/node_modules ./node_modules
-
-# Copy all files from hvac-ui directory
+# Copy source code
 COPY hvac-ui/ ./
 
 # Set environment variables
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_ENV production
-
-# Build the application
-RUN npm run build
-
-# Production image, copy all the files and run next
-FROM base AS runner
-WORKDIR /app
-
-# Set environment variables
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
-
-# Create a non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
-
-# Copy built application
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Set user
-USER nextjs
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=development
 
 # Expose port
 EXPOSE 3000
 
 # Set environment variables
-ENV PORT 3000
-ENV HOSTNAME "0.0.0.0"
+ENV PORT=3000
+ENV HOSTNAME="0.0.0.0"
 
-# Start the application
-CMD ["node", "server.js"]
+# Health check to ensure container is running properly
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3000/ || exit 1
+
+# Start the application in development mode
+CMD ["npm", "run", "dev"]

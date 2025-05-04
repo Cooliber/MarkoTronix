@@ -11,10 +11,23 @@ import { ScrollTrigger } from 'gsap/dist/ScrollTrigger';
 import { ScrollToPlugin } from 'gsap/dist/ScrollToPlugin';
 import { Draggable } from 'gsap/dist/Draggable';
 import { MotionPathPlugin } from 'gsap/dist/MotionPathPlugin';
+import { Observer } from 'gsap/dist/Observer';
+import { TextPlugin } from 'gsap/dist/TextPlugin';
+
+// Import our animation context
+import { AnimationProvider } from '@/contexts/AnimationContext';
+import PageTransition from '@/components/PageTransition';
 
 // Register GSAP plugins
 if (typeof window !== 'undefined') {
-  gsap.registerPlugin(ScrollTrigger, ScrollToPlugin, Draggable, MotionPathPlugin);
+  gsap.registerPlugin(
+    ScrollTrigger,
+    ScrollToPlugin,
+    Draggable,
+    MotionPathPlugin,
+    Observer,
+    TextPlugin
+  );
 }
 
 // Extend the theme to include custom colors, fonts, etc
@@ -69,88 +82,39 @@ const theme = extendTheme({
 export default function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
 
-  // Set up global page transition animations
+  // Refresh ScrollTrigger on route change
   useEffect(() => {
-    // Create a timeline for page transitions
-    const pageTransition = (completeCallback: () => void) => {
-      const tl = gsap.timeline({
-        onComplete: completeCallback,
-        defaults: { ease: 'power2.inOut' },
-      });
-
-      tl.to('#page-transition-overlay', { 
-        duration: 0.5, 
-        scaleY: 1, 
-        transformOrigin: 'bottom', 
-      })
-      .to('#page-transition-overlay', { 
-        duration: 0.5, 
-        scaleY: 0, 
-        transformOrigin: 'top', 
-        delay: 0.1 
-      });
-
-      return tl;
-    };
-
-    // Handle route change start
-    const handleRouteChangeStart = (url: string) => {
-      // Don't animate if it's the same route
-      if (router.pathname === url) return;
-      
-      pageTransition(() => {});
-    };
-
-    // Handle route change complete
     const handleRouteChangeComplete = () => {
-      // Animate content in
-      gsap.fromTo(
-        '.page-content',
-        { opacity: 0, y: 20 },
-        { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', clearProps: 'all' }
-      );
+      // Refresh ScrollTrigger to recalculate positions
+      if (typeof window !== 'undefined') {
+        ScrollTrigger.refresh();
+      }
     };
 
-    // Add router event listeners
-    router.events.on('routeChangeStart', handleRouteChangeStart);
+    // Add router event listener
     router.events.on('routeChangeComplete', handleRouteChangeComplete);
-
-    // Initial animation for first load
-    gsap.fromTo(
-      '.page-content',
-      { opacity: 0, y: 20 },
-      { opacity: 1, y: 0, duration: 0.5, ease: 'power2.out', delay: 0.2, clearProps: 'all' }
-    );
 
     // Cleanup
     return () => {
-      router.events.off('routeChangeStart', handleRouteChangeStart);
       router.events.off('routeChangeComplete', handleRouteChangeComplete);
     };
   }, [router]);
 
   return (
     <ChakraProvider theme={theme}>
-      <AuthProvider>
-        {/* Page transition overlay */}
-        <Box
-          id="page-transition-overlay"
-          position="fixed"
-          top={0}
-          left={0}
-          right={0}
-          bottom={0}
-          bg="brand.500"
-          zIndex={9999}
-          scaleY={0}
-          pointerEvents="none"
-        />
-        
-        {/* Main content */}
-        <Box className="page-content">
-          <Component {...pageProps} />
-        </Box>
-      </AuthProvider>
+      <AnimationProvider>
+        <AuthProvider>
+          {/* Main content with page transitions */}
+          <PageTransition
+            mode="fade"
+            duration={0.4}
+            width="100%"
+            height="100%"
+          >
+            <Component {...pageProps} />
+          </PageTransition>
+        </AuthProvider>
+      </AnimationProvider>
     </ChakraProvider>
   );
 }
