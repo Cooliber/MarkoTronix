@@ -1,0 +1,64 @@
+name: Container Tests
+
+on:
+  push:
+    branches: [main, feature/*, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  container-tests:
+    name: Run Container Tests
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Start containers
+        run: docker-compose up -d
+      
+      - name: Wait for containers to be ready
+        run: |
+          echo "Waiting for containers to be ready..."
+          sleep 30
+      
+      - name: Check container status
+        run: docker ps
+      
+      - name: Run container tests
+        run: node test-containers.js
+      
+      - name: Run container resource tests
+        run: node test-container-resources.js
+      
+      - name: Generate test report
+        run: |
+          echo "# Container Test Report" > container-test-report.md
+          echo "" >> container-test-report.md
+          echo "## Test Results" >> container-test-report.md
+          echo "" >> container-test-report.md
+          echo "### Container Status" >> container-test-report.md
+          docker ps --format "| {{.Names}} | {{.Status}} | {{.Ports}} |" >> container-test-report.md
+          echo "" >> container-test-report.md
+          echo "### Container Resources" >> container-test-report.md
+          docker stats --no-stream --format "| {{.Name}} | {{.CPUPerc}} | {{.MemUsage}} | {{.NetIO}} |" >> container-test-report.md
+      
+      - name: Upload test report
+        uses: actions/upload-artifact@v3
+        with:
+          name: container-test-report
+          path: container-test-report.md
+      
+      - name: Stop containers
+        run: docker-compose down

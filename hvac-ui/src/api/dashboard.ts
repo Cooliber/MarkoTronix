@@ -1,4 +1,5 @@
-import { api } from './axios';
+import { api, executeWithCircuitBreaker } from './axios';
+import { logger } from '@/utils/logger';
 
 export interface DashboardStats {
   newEmails: number;
@@ -9,10 +10,13 @@ export interface DashboardStats {
 
 export const fetchDashboardStats = async (): Promise<DashboardStats> => {
   try {
-    const response = await api.get('/dashboard/stats');
-    return response.data;
+    // Use circuit breaker to protect the API call
+    return await executeWithCircuitBreaker(async () => {
+      const response = await api.get('/dashboard/stats');
+      return response.data;
+    });
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
+    logger.error('Error fetching dashboard stats:', error);
     // Return default values if API fails
     return {
       newEmails: 0,

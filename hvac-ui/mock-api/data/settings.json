@@ -1,0 +1,33 @@
+{
+  "api": {
+    "apiUrl": "http://localhost:18000/api",
+    "websocketUrl": "ws://localhost:18000/ws"
+  },
+  "mail": {
+    "mailServer": "",
+    "mailPort": "993",
+    "mailUsername": "",
+    "mailPassword": "",
+    "mailUseTls": true,
+    "mailCheckInterval": "60"
+  },
+  "offer": {
+    "openaiApiKey": "",
+    "defaultLlmModel": "gpt-3.5-turbo"
+  },
+  "link": {
+    "secretKey": "your-secret-key-for-development-only",
+    "docusignClientId": "",
+    "docusignUserId": "",
+    "docusignAccountId": "",
+    "hellosignApiKey": ""
+  },
+  "database": {
+    "databaseUrl": "postgresql://postgres:postgres@postgres:15432/hvac_crm",
+    "redisUrl": "redis://redis:16379/0"
+  },
+  "supabase": {
+    "supabaseUrl": "",
+    "supabaseKey": ""
+  }
+}

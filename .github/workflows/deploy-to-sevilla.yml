@@ -1,0 +1,71 @@
+name: Deploy to Sevilla
+
+on:
+  push:
+    branches:
+      - main
+      - production
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  deploy:
+    name: Deploy to Sevilla
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: 'hvac-ui/package-lock.json'
+      
+      - name: Install dependencies
+        working-directory: hvac-ui
+        run: npm ci
+      
+      - name: Install Sevilla CLI
+        run: npm install -g @sevilla/cli
+      
+      - name: Login to Sevilla
+        run: sevilla login --token ${{ secrets.SEVILLA_TOKEN }}
+      
+      - name: Set environment variables
+        working-directory: hvac-ui
+        run: |
+          if [ "${{ github.event.inputs.environment || (github.ref == 'refs/heads/main' && 'staging' || 'production') }}" = "production" ]; then
+            cp .env.sevilla .env.production
+            # Override with production-specific values
+            echo "NEXT_PUBLIC_SITE_URL=https://hvac-crm.example.com" >> .env.production
+            echo "CUSTOM_DOMAINS=hvac-crm.example.com" >> .env.production
+          else
+            cp .env.sevilla .env.production
+            # Override with staging-specific values
+            echo "NEXT_PUBLIC_SITE_URL=https://staging.hvac-crm.sevilla.app" >> .env.production
+            echo "APP_ENV=staging" >> .env.production
+            echo "NEXT_PUBLIC_APP_ENV=staging" >> .env.production
+          fi
+      
+      - name: Build application
+        working-directory: hvac-ui
+        run: npm run build
+      
+      - name: Deploy to Sevilla
+        working-directory: hvac-ui
+        run: sevilla deploy --config ./deploy/sevilla.config.js
+      
+      - name: Output deployment URL
+        run: echo "Deployed to $(sevilla info --name hvac-crm --output url)"

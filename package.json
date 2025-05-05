@@ -1,0 +1,57 @@
+{
+  "name": "markotronix-hvac-crm",
+  "version": "1.0.0",
+  "description": "HVAC CRM System",
+  "private": true,
+  "workspaces": [
+    "hvac-ui"
+  ],
+  "scripts": {
+    "dev": "cd hvac-ui && npm run dev",
+    "build": "cd hvac-ui && npm run build",
+    "build:prod": "cross-env NODE_ENV=production cd hvac-ui && npm run build",
+    "start": "cd hvac-ui && npm start",
+    "lint": "cd hvac-ui && npm run lint",
+    "test": "cd hvac-ui && npm test",
+    "test:ci": "cd hvac-ui && npm run test -- --ci --coverage",
+    "clean": "rimraf hvac-ui/.next hvac-ui/out",
+    "clean:modules": "rimraf node_modules hvac-ui/node_modules",
+    "clean:install": "npm run clean:modules && npm install",
+    "fix:deps": "node scripts/fix-dependencies.js",
+    "update:deps": "npx npm-check-updates -u && cd hvac-ui && npx npm-check-updates -u",
+    "docker:build": "docker build -t hvac-crm-ui .",
+    "docker:run": "docker run -p 3000:3000 --env-file hvac-ui/.env.production hvac-crm-ui",
+    "docker:compose": "docker-compose up -d",
+    "docker:compose:down": "docker-compose down",
+    "deploy:nixpacks": "nixpacks build . --name hvac-crm",
+    "deploy:sevilla": "cd hvac-ui && ./deploy/deploy-to-sevilla.sh",
+    "deploy": "bash ./deploy.sh"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Cooliber/MarkoTronix.git"
+  },
+  "keywords": [
+    "hvac",
+    "crm",
+    "workflow",
+    "automation"
+  ],
+  "author": "MarkoTronix",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/Cooliber/MarkoTronix/issues"
+  },
+  "homepage": "https://github.com/Cooliber/MarkoTronix#readme",
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "dependencies": {
+    "react-toastify": "^11.0.5"
+  },
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "npm-check-updates": "^16.14.18",
+    "rimraf": "^5.0.5"
+  }
+}

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  # HVAC CRM UI
+  hvac-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "${PORT:-28000}:3000"
+    environment:
+      - NODE_ENV=production
+      - NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:18000/api}
+      - API_URL=${API_URL:-http://localhost:18000/api}
+      - APP_ENV=${APP_ENV:-production}
+    restart: unless-stopped
+
+networks:
+  default:
+    driver: bridge
