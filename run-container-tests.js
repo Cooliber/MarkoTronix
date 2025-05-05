@@ -23,7 +23,7 @@ function openContainerTestPage() {
   console.log('Opening container test page in browser...');
   
   try {
-    execSync('start http://localhost:3000/container-test');
+    execSync('start http://localhost:28000/container-test');
     console.log('Container test page opened in browser');
     return true;
   } catch (err) {

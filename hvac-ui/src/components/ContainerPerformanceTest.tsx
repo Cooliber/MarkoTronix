@@ -290,14 +290,14 @@ export default function ContainerPerformanceTest() {
     // Test 2: Mock API response time
     try {
       const mockApiStart = performance.now();
-      await fetch('http://localhost:8000/api/health', { credentials: 'omit' });
+      await fetch('http://localhost:18000/api/health', { credentials: 'omit' });
       const mockApiEnd = performance.now();
 
       results.push({
         name: 'Mock API Response Time',
         score: mockApiEnd - mockApiStart,
         unit: 'ms',
-        details: 'Time to fetch http://localhost:8000/api/health',
+        details: 'Time to fetch http://localhost:18000/api/health',
       });
     } catch (e) {
       results.push({

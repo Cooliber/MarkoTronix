@@ -39,8 +39,8 @@ export default function ContainerNetworkTest() {
     { name: 'API Container Test', url: '/api/container-test' },
     { name: 'UI Health', url: '/api/health' },
     { name: 'UI Container Test', url: '/api/container-test' },
-    { name: 'Mock API Health', url: 'http://localhost:8000/api/health' },
-    { name: 'Mock API Container Test', url: 'http://localhost:8000/api/container-test' },
+    { name: 'Mock API Health', url: 'http://localhost:18000/api/health' },
+    { name: 'Mock API Container Test', url: 'http://localhost:18000/api/container-test' },
   ];
 
   const runNetworkTests = async () => {

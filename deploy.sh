@@ -16,8 +16,8 @@ function print_usage() {
   echo "            Valid values: sevilla, nixpacks, docker, docker-compose, standalone"
   echo ""
   echo "Environment variables:"
-  echo "  PORT           Port to expose the application (default: 3000)"
-  echo "  API_URL        URL of the API (default: http://localhost:8000/api)"
+  echo "  PORT           Port to expose the application (default: 28000)"
+  echo "  API_URL        URL of the API (default: http://localhost:18000/api)"
   echo "  APP_ENV        Environment (development, production) (default: production)"
   echo ""
   echo "Examples:"
@@ -33,8 +33,8 @@ if [[ "$1" == "-h" || "$1" == "--help" ]]; then
 fi
 
 # Default environment variables
-export PORT=${PORT:-3000}
-export API_URL=${API_URL:-http://localhost:8000/api}
+export PORT=${PORT:-28000}
+export API_URL=${API_URL:-http://localhost:18000/api}
 export APP_ENV=${APP_ENV:-production}
 
 # Validate platform
@@ -56,10 +56,10 @@ case "$PLATFORM" in
     echo "Deploying with Nixpacks..."
     nixpacks build . --config ./nixpacks.toml --name hvac-crm
     echo "Running the container..."
-    docker run -p ${PORT:-3000}:3000 \
+    docker run -p ${PORT:-28000}:3000 \
       -e NODE_ENV=production \
-      -e NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000/api} \
-      -e API_URL=${API_URL:-http://localhost:8000/api} \
+      -e NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:18000/api} \
+      -e API_URL=${API_URL:-http://localhost:18000/api} \
       -e APP_ENV=${APP_ENV:-production} \
       hvac-crm
     ;;
@@ -67,10 +67,10 @@ case "$PLATFORM" in
     echo "Building Docker image..."
     docker build -t hvac-crm-ui .
     echo "Running Docker container..."
-    docker run -p ${PORT:-3000}:3000 \
+    docker run -p ${PORT:-28000}:3000 \
       -e NODE_ENV=production \
-      -e NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:8000/api} \
-      -e API_URL=${API_URL:-http://localhost:8000/api} \
+      -e NEXT_PUBLIC_API_URL=${API_URL:-http://localhost:18000/api} \
+      -e API_URL=${API_URL:-http://localhost:18000/api} \
       -e APP_ENV=${APP_ENV:-production} \
       hvac-crm-ui
     ;;

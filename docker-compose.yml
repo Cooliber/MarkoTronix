@@ -8,12 +8,12 @@ services:
       - ./hvac-ui:/app
       - hvac-ui-node-modules:/app/node_modules
     ports:
-      - "18000:3000"
+      - "28000:3000"
     environment:
       - NODE_ENV=development
-      - NEXT_PUBLIC_API_URL=${API_URL:-http://api:8000/api}
-      - NEXT_PUBLIC_WEBSOCKET_URL=${WEBSOCKET_URL:-ws://api:8000/ws}
-      - API_URL=${API_URL:-http://api:8000/api}
+      - NEXT_PUBLIC_API_URL=${API_URL:-http://api:18000/api}
+      - NEXT_PUBLIC_WEBSOCKET_URL=${WEBSOCKET_URL:-ws://api:18000/ws}
+      - API_URL=${API_URL:-http://api:18000/api}
       - APP_ENV=${APP_ENV:-development}
       - NEXT_TELEMETRY_DISABLED=1
       - CHOKIDAR_USEPOLLING=true
@@ -38,7 +38,7 @@ services:
       - ./hvac-ui/mock-api:/app
     command: sh -c "npm install && npm start"
     ports:
-      - "8000:18000"
+      - "18000:18000"
     environment:
       - NODE_ENV=development
       - PORT=18000
@@ -46,7 +46,7 @@ services:
       - hvac-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/api/health"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:18000/api/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -60,12 +60,12 @@ services:
       - ./mail-ingest-service:/app
       - mail-attachments:/app/attachments
     ports:
-      - "8001:8000"
+      - "18001:8000"
     env_file:
       - ./mail-ingest-service/.env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/hvac_crm
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:15432/hvac_crm
+      - REDIS_URL=redis://redis:16379/0
       # Comment out mail server settings to disable automatic mail checking
       # - MAIL_SERVER=imap.example.com
       # - MAIL_PORT=993
@@ -94,12 +94,12 @@ services:
       - ./offer-generation:/app
       - offer-storage:/app/storage
     ports:
-      - "8002:8000"
+      - "18002:8000"
     env_file:
       - ./offer-generation/.env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/hvac_crm
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:15432/hvac_crm
+      - REDIS_URL=redis://redis:16379/0
       - STORAGE_DIR=/app/storage
       # Set to your actual API key or leave commented out for development
       # - OPENAI_API_KEY=your-openai-api-key
@@ -124,12 +124,12 @@ services:
       - ./link-service:/app
       - link-storage:/app/storage
     ports:
-      - "8003:8000"
+      - "18003:8000"
     env_file:
       - ./link-service/.env
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/hvac_crm
-      - REDIS_URL=redis://redis:6379/0
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:15432/hvac_crm
+      - REDIS_URL=redis://redis:16379/0
       - SECRET_KEY=your-secret-key-for-development-only
       - ALGORITHM=HS256
       - ACCESS_TOKEN_EXPIRE_MINUTES=30
@@ -157,7 +157,7 @@ services:
   redis:
     image: redis:7-alpine
     ports:
-      - "6379:6379"
+      - "16379:6379"
     volumes:
       - redis-data:/data
     networks:
@@ -178,7 +178,7 @@ services:
       POSTGRES_PASSWORD: postgres
       POSTGRES_DB: hvac_crm
     ports:
-      - "5432:5432"
+      - "15432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     networks:

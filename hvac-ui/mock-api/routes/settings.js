@@ -9,8 +9,8 @@ const SETTINGS_FILE = path.join(__dirname, '..', 'data', 'settings.json');
 // Default configuration
 const defaultConfig = {
   api: {
-    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api',
-    websocketUrl: process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:8000/ws',
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18000/api',
+    websocketUrl: process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://localhost:18000/ws',
   },
   mail: {
     mailServer: '',
@@ -32,8 +32,8 @@ const defaultConfig = {
     hellosignApiKey: '',
   },
   database: {
-    databaseUrl: 'postgresql://postgres:postgres@postgres:5432/hvac_crm',
-    redisUrl: 'redis://redis:6379/0',
+    databaseUrl: 'postgresql://postgres:postgres@postgres:15432/hvac_crm',
+    redisUrl: 'redis://redis:16379/0',
   },
   supabase: {
     supabaseUrl: '',

@@ -2,6 +2,7 @@ import { createContext, useState, useEffect, ReactNode } from 'react';
 import { useRouter } from 'next/router';
 const jwt_decode = require('jwt-decode');
 import { api } from '@/api/axios';
+import { useLocalStorage } from '@/hooks/usehooks';
 
 interface User {
   id: string;
@@ -43,11 +44,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const [token, setToken, removeToken] = useLocalStorage<string | null>('token', null);
 
   useEffect(() => {
     const initAuth = async () => {
-      const token = localStorage.getItem('token');
-
       if (token) {
         try {
           // Verify token is valid
@@ -56,7 +56,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
           if (decoded.exp < currentTime) {
             // Token expired
-            localStorage.removeItem('token');
+            removeToken();
             setUser(null);
           } else {
             // Set token in axios headers
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           }
         } catch (error) {
           console.error('Auth initialization error:', error);
-          localStorage.removeItem('token');
+          removeToken();
           setUser(null);
         }
       }
@@ -77,15 +77,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     };
 
     initAuth();
-  }, []);
+  }, [token, removeToken]);
 
   const login = async (email: string, password: string) => {
     try {
       const response = await api.post('/auth/login', { email, password });
-      const { token, user } = response.data;
+      const { token: newToken, user } = response.data;
 
-      localStorage.setItem('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setToken(newToken);
+      api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
       setUser(user);
     } catch (error) {
@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
-      localStorage.removeItem('token');
+      removeToken();
       delete api.defaults.headers.common['Authorization'];
       setUser(null);
       router.push('/login');
@@ -122,10 +122,10 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
 
       // If registration is successful, automatically log in the user
-      const { token, user } = response.data;
+      const { token: newToken, user } = response.data;
 
-      localStorage.setItem('token', token);
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setToken(newToken);
+      api.defaults.headers.common['Authorization'] = `Bearer ${newToken}`;
 
       setUser(user);
     } catch (error) {

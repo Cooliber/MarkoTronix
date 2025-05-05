@@ -36,11 +36,11 @@ nixpacks build . --config ./deploy/nixpacks.toml --name hvac-crm-$ENV
 
 # Run the container
 echo "Running the container..."
-docker run -d --name hvac-crm-$ENV -p 3000:3000 --env-file .env.production hvac-crm-$ENV
+docker run -d --name hvac-crm-$ENV -p 28000:3000 --env-file .env.production hvac-crm-$ENV
 
 # Output deployment information
 echo "Deployment complete!"
-echo "Your application is running at: http://localhost:3000"
+echo "Your application is running at: http://localhost:28000"
 echo "Container ID: $(docker ps -q -f name=hvac-crm-$ENV)"
 
 echo "Deployment script completed successfully!"

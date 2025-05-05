@@ -26,3 +26,6 @@ key = "node_modules-{{ checksum 'hvac-ui/package-lock.json' }}-{{ checksum 'nixp
 [[cache]]
 path = "hvac-ui/.next/cache"
 key = "next-cache-{{ checksum 'hvac-ui/package-lock.json' }}-{{ checksum 'nixpacks.toml' }}"
+
+# Note: Custom hooks from @uidotdev/usehooks have been implemented directly in the codebase
+# under src/hooks/usehooks to avoid dependency issues

@@ -1,7 +1,7 @@
 {
   "api": {
-    "apiUrl": "http://localhost:8000/api",
-    "websocketUrl": "ws://localhost:8000/ws"
+    "apiUrl": "http://localhost:18000/api",
+    "websocketUrl": "ws://localhost:18000/ws"
   },
   "mail": {
     "mailServer": "",
@@ -23,8 +23,8 @@
     "hellosignApiKey": ""
   },
   "database": {
-    "databaseUrl": "postgresql://postgres:postgres@postgres:5432/hvac_crm",
-    "redisUrl": "redis://redis:6379/0"
+    "databaseUrl": "postgresql://postgres:postgres@postgres:15432/hvac_crm",
+    "redisUrl": "redis://redis:16379/0"
   },
   "supabase": {
     "supabaseUrl": "",

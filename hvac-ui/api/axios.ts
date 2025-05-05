@@ -2,12 +2,12 @@ import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
 // Main API URL for the mock API
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000/api';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:18000/api';
 
 // Microservice URLs
-export const MAIL_SERVICE_URL = process.env.NEXT_PUBLIC_MAIL_SERVICE_URL || 'http://localhost:8001';
-export const OFFER_SERVICE_URL = process.env.NEXT_PUBLIC_OFFER_SERVICE_URL || 'http://localhost:8002';
-export const LINK_SERVICE_URL = process.env.NEXT_PUBLIC_LINK_SERVICE_URL || 'http://localhost:8003';
+export const MAIL_SERVICE_URL = process.env.NEXT_PUBLIC_MAIL_SERVICE_URL || 'http://localhost:18001';
+export const OFFER_SERVICE_URL = process.env.NEXT_PUBLIC_OFFER_SERVICE_URL || 'http://localhost:18002';
+export const LINK_SERVICE_URL = process.env.NEXT_PUBLIC_LINK_SERVICE_URL || 'http://localhost:18003';
 
 export const api = axios.create({
   baseURL: API_URL,

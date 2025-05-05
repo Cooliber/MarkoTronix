@@ -52,7 +52,7 @@ async function runTests() {
   
   console.log('\n2. Testing API container:');
   try {
-    const apiResponse = await makeRequest('http://localhost:8000/api/container-test');
+    const apiResponse = await makeRequest('http://localhost:18000/api/container-test');
     console.log(`   Status: ${apiResponse.statusCode}`);
     console.log(`   Response: ${JSON.stringify(apiResponse.data, null, 2)}`);
   } catch (err) {
@@ -61,7 +61,7 @@ async function runTests() {
   
   console.log('\n3. Testing UI container health:');
   try {
-    const uiHealthResponse = await makeRequest('http://localhost:3000/api/health');
+    const uiHealthResponse = await makeRequest('http://localhost:28000/api/health');
     console.log(`   Status: ${uiHealthResponse.statusCode}`);
     console.log(`   Response: ${JSON.stringify(uiHealthResponse.data, null, 2)}`);
   } catch (err) {
@@ -70,7 +70,7 @@ async function runTests() {
   
   console.log('\n4. Testing UI container test endpoint:');
   try {
-    const uiTestResponse = await makeRequest('http://localhost:3000/api/container-test');
+    const uiTestResponse = await makeRequest('http://localhost:28000/api/container-test');
     console.log(`   Status: ${uiTestResponse.statusCode}`);
     console.log(`   Response: ${JSON.stringify(uiTestResponse.data, null, 2)}`);
   } catch (err) {

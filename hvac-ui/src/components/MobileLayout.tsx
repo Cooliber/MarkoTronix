@@ -49,6 +49,7 @@ import {
 import { gsap } from 'gsap';
 import { useAnimation } from '@/hooks/useAnimation';
 import { mobileMenuOpenAnimation, mobileMenuCloseAnimation, pageEnterAnimation } from '@/utils/animations';
+import { useWindowSize, useMediaQuery, mediaQueries } from '@/hooks/usehooks';
 
 interface MobileLayoutProps {
   children: ReactNode;
@@ -69,7 +70,15 @@ export default function MobileLayout({
   const { registerAnimation } = useAnimation();
   const drawerRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
-  const isMobile = useBreakpointValue({ base: true, md: false });
+
+  // Use both Chakra's breakpoint and our custom hooks for responsive design
+  const isMobileChakra = useBreakpointValue({ base: true, md: false });
+  const isMobileMedia = useMediaQuery(mediaQueries.mobile);
+  const isMobile = isMobileChakra !== undefined ? isMobileChakra : isMobileMedia;
+
+  // Get window dimensions for more precise control
+  const { width, height } = useWindowSize();
+
   const [notificationCount, setNotificationCount] = useState(3);
 
   // Handle drawer animations
@@ -229,11 +238,11 @@ export default function MobileLayout({
               >
                 Dashboard
               </Button>
-              
+
               <Text px={4} pt={4} pb={1} fontSize="xs" fontWeight="bold" color="gray.500">
                 CLIENT MANAGEMENT
               </Text>
-              
+
               <Button
                 leftIcon={<FiUsers />}
                 justifyContent="flex-start"
@@ -245,7 +254,7 @@ export default function MobileLayout({
               >
                 Clients
               </Button>
-              
+
               <Button
                 leftIcon={<FiMail />}
                 justifyContent="flex-start"
@@ -257,7 +266,7 @@ export default function MobileLayout({
               >
                 Emails
               </Button>
-              
+
               <Button
                 leftIcon={<FiFileText />}
                 justifyContent="flex-start"
@@ -269,7 +278,7 @@ export default function MobileLayout({
               >
                 Transcriptions
               </Button>
-              
+
               <Button
                 leftIcon={<FiFileText />}
                 justifyContent="flex-start"
@@ -281,11 +290,11 @@ export default function MobileLayout({
               >
                 Offers
               </Button>
-              
+
               <Text px={4} pt={4} pb={1} fontSize="xs" fontWeight="bold" color="gray.500">
                 SERVICE MANAGEMENT
               </Text>
-              
+
               <Button
                 leftIcon={<FiCalendar />}
                 justifyContent="flex-start"
@@ -297,7 +306,7 @@ export default function MobileLayout({
               >
                 Calendar
               </Button>
-              
+
               <Button
                 leftIcon={<FiTool />}
                 justifyContent="flex-start"
@@ -309,7 +318,7 @@ export default function MobileLayout({
               >
                 Service Orders
               </Button>
-              
+
               <Button
                 leftIcon={<FiAward />}
                 justifyContent="flex-start"
@@ -321,7 +330,7 @@ export default function MobileLayout({
               >
                 Warranty Cards
               </Button>
-              
+
               <Button
                 leftIcon={<FiMap />}
                 justifyContent="flex-start"
@@ -333,11 +342,11 @@ export default function MobileLayout({
               >
                 Map
               </Button>
-              
+
               <Text px={4} pt={4} pb={1} fontSize="xs" fontWeight="bold" color="gray.500">
                 INVENTORY & REPORTS
               </Text>
-              
+
               <Button
                 leftIcon={<FiPackage />}
                 justifyContent="flex-start"
@@ -349,7 +358,7 @@ export default function MobileLayout({
               >
                 Inventory
               </Button>
-              
+
               <Button
                 leftIcon={<FiClipboard />}
                 justifyContent="flex-start"
@@ -361,7 +370,7 @@ export default function MobileLayout({
               >
                 Service Reports
               </Button>
-              
+
               <Button
                 leftIcon={<FiBarChart2 />}
                 justifyContent="flex-start"
@@ -373,11 +382,11 @@ export default function MobileLayout({
               >
                 Analytics
               </Button>
-              
+
               <Text px={4} pt={4} pb={1} fontSize="xs" fontWeight="bold" color="gray.500">
                 SYSTEM
               </Text>
-              
+
               <Button
                 leftIcon={<FiSliders />}
                 justifyContent="flex-start"
@@ -395,18 +404,18 @@ export default function MobileLayout({
       </Drawer>
 
       {/* Main Content */}
-      <Box 
-        ref={contentRef} 
-        pt="60px" 
-        pb="70px" 
+      <Box
+        ref={contentRef}
+        pt="60px"
+        pb="70px"
         px={4}
         opacity={0} // Initial state for animation
       >
         {children}
       </Box>
 
-      {/* Mobile Bottom Navigation */}
-      {isMobile && (
+      {/* Mobile Bottom Navigation - only show on small screens */}
+      {(isMobile || width < 768) && (
         <Flex
           as="nav"
           position="fixed"
@@ -421,6 +430,8 @@ export default function MobileLayout({
           borderTopColor={useColorModeValue('gray.200', 'gray.700')}
           justify="space-around"
           boxShadow="0 -2px 10px rgba(0, 0, 0, 0.05)"
+          // Adjust height based on device (larger for touch devices)
+          minH={width < 480 ? "60px" : "50px"}
         >
           <IconButton
             aria-label="Dashboard"

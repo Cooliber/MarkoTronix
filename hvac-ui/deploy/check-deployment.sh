@@ -7,14 +7,14 @@
 set -e
 
 # Default values
-URL=${1:-"http://localhost:3000"}
+URL=${1:-"http://localhost:28000"}
 TIMEOUT=${2:-30}
 INTERVAL=${3:-5}
 
 # Print usage information
 function print_usage() {
   echo "Usage: $0 [URL] [TIMEOUT] [INTERVAL]"
-  echo "  URL: The URL to check (default: http://localhost:3000)"
+  echo "  URL: The URL to check (default: http://localhost:28000)"
   echo "  TIMEOUT: Maximum time to wait in seconds (default: 30)"
   echo "  INTERVAL: Time between checks in seconds (default: 5)"
   echo ""
