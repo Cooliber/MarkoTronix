@@ -38,10 +38,10 @@ services:
       - ./hvac-ui/mock-api:/app
     command: sh -c "npm install && npm start"
     ports:
-      - "8000:8000"
+      - "8000:18000"
     environment:
       - NODE_ENV=development
-      - PORT=8000
+      - PORT=18000
     networks:
       - hvac-network
     restart: unless-stopped
