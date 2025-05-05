@@ -24,6 +24,9 @@ from app.schemas import (
     EmailWithAttachments, AttachmentWithProcessedData, EmailWithProcessedAttachments
 )
 
+# Import feedback module
+from app.feedback import AttachmentFeedback, FeedbackService
+
 # Import core modules
 from app.core.logging import get_logger, setup_logging, setup_middleware
 from app.core.exceptions import (
@@ -592,6 +595,86 @@ def search_attachments(
         })
     
     return formatted_results
+
+@app.post("/attachments/{attachment_id}/feedback")
+async def submit_feedback(
+    attachment_id: int,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Submit feedback for a processed attachment."""
+    attachment = db.query(Attachment).filter(Attachment.id == attachment_id).first()
+    if attachment is None:
+        raise NotFoundException("Attachment not found")
+
+    processed_attachment = db.query(ProcessedAttachment).filter(
+        ProcessedAttachment.attachment_id == attachment_id
+    ).first()
+    
+    if processed_attachment is None:
+        raise NotFoundException("Processed attachment not found")
+    
+    try:
+        # Get feedback data from request
+        feedback_data = await request.json()
+        
+        # Create feedback service
+        feedback_service = FeedbackService(db)
+        
+        # Create feedback
+        feedback = feedback_service.create_feedback({
+            "attachmentId": attachment_id,
+            "processedAttachmentId": processed_attachment.id,
+            "correctedEntities": feedback_data.get("correctedEntities", {}),
+            "correctedTags": feedback_data.get("correctedTags", []),
+            "missingEntities": feedback_data.get("missingEntities", {}),
+            "missingTags": feedback_data.get("missingTags", []),
+            "feedbackNotes": feedback_data.get("feedbackNotes", ""),
+            "rating": feedback_data.get("rating", 3)
+        })
+        
+        return {
+            "status": "success",
+            "message": "Feedback submitted successfully",
+            "feedback_id": feedback.id
+        }
+    except Exception as e:
+        logger.error(f"Error submitting feedback: {str(e)}")
+        raise ValidationException(f"Failed to submit feedback: {str(e)}")
+
+
+@app.get("/attachments/{attachment_id}/feedback")
+def get_attachment_feedback(
+    attachment_id: int,
+    db: Session = Depends(get_db)
+):
+    """Get all feedback for a specific attachment."""
+    attachment = db.query(Attachment).filter(Attachment.id == attachment_id).first()
+    if attachment is None:
+        raise NotFoundException("Attachment not found")
+    
+    # Create feedback service
+    feedback_service = FeedbackService(db)
+    
+    # Get feedback
+    feedback_list = feedback_service.get_feedback_by_attachment(attachment_id)
+    
+    return [
+        {
+            "id": feedback.id,
+            "attachment_id": feedback.attachment_id,
+            "processed_attachment_id": feedback.processed_attachment_id,
+            "corrected_entities": feedback.corrected_entities,
+            "corrected_tags": feedback.corrected_tags,
+            "missing_entities": feedback.missing_entities,
+            "missing_tags": feedback.missing_tags,
+            "feedback_notes": feedback.feedback_notes,
+            "rating": feedback.rating,
+            "created_at": feedback.created_at.isoformat() if feedback.created_at else None
+        }
+        for feedback in feedback_list
+    ]
+
 
 @app.get("/attachments/stats")
 def get_attachment_stats(db: Session = Depends(get_db)):

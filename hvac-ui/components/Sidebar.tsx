@@ -30,6 +30,7 @@ import {
   FiTool,
   FiSliders,
   FiSettings,
+  FiPaperclip,
 } from 'react-icons/fi';
 interface SidebarProps {
   isOpen: boolean;
@@ -117,6 +118,9 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </NavItem>
         <NavItem icon={FiMail as unknown as ReactNode} path="/communications" isActive={currentPath.startsWith('/communications')}>
           Communications
+        </NavItem>
+        <NavItem icon={FiPaperclip as unknown as ReactNode} path="/attachments" isActive={currentPath.startsWith('/attachments')}>
+          Attachments
         </NavItem>
         <NavItem
           icon={FiFileText as unknown as ReactNode}

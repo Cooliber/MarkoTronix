@@ -1,11 +1,44 @@
 [phases.setup]
-nixPkgs = ["nodejs", "yarn"]
+nixPkgs = ["nodejs", "npm", "python3", "gcc", "openssl"]
+aptPkgs = ["ca-certificates", "fonts-liberation", "libasound2", "libatk-bridge2.0-0", "libatk1.0-0", "libcups2", "libdbus-1-3", "libgbm1", "libgtk-3-0", "libnspr4", "libnss3", "libxcomposite1", "libxdamage1", "libxrandr2", "libxss1", "libxtst6", "xdg-utils"]
 
 [phases.install]
-cmds = ["yarn install --frozen-lockfile"]
+cmds = [
+  "npm ci --prefer-offline --no-audit --no-fund"
+]
+cacheDirectories = [".next/cache"]
 
 [phases.build]
-cmds = ["yarn build"]
+cmds = [
+  "npm run generate-icons",
+  "npm run build:sevilla"
+]
+dependsOn = ["install"]
+
+[phases.setup.env]
+NODE_ENV = "production"
+NEXT_TELEMETRY_DISABLED = "1"
+NPM_CONFIG_PRODUCTION = "true"
 
 [start]
-cmd = "yarn start"
+cmd = "npm run start:sevilla"
+dependsOn = ["build"]
+
+[start.env]
+NODE_ENV = "production"
+PORT = "3000"
+HOST = "0.0.0.0"
+
+[variables]
+NIXPACKS_NODE_VERSION = "20.11.1"
+NIXPACKS_INSTALL_CMD = "npm ci --prefer-offline --no-audit --no-fund"
+NIXPACKS_BUILD_CMD = "npm run build:sevilla"
+NIXPACKS_START_CMD = "npm run start:sevilla"
+
+[customizations]
+buildImage = "node:20.11.1-alpine"
+runtimeImage = "node:20.11.1-alpine"
+
+[customizations.entrypoint]
+type = "shell"
+command = "node server.js"
