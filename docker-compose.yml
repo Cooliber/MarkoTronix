@@ -8,7 +8,7 @@ services:
       - ./hvac-ui:/app
       - hvac-ui-node-modules:/app/node_modules
     ports:
-      - "3000:3000"
+      - "18000:3000"
     environment:
       - NODE_ENV=development
       - NEXT_PUBLIC_API_URL=${API_URL:-http://api:8000/api}
