@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { gsap } from 'gsap';
+import { useMediaQuery, mediaQueries } from '@/hooks/usehooks';
 
 // Define animation settings type
 interface AnimationSettings {
@@ -40,29 +41,17 @@ export const AnimationProvider: React.FC<{ children: ReactNode }> = ({ children 
   const [settings, setSettings] = useState<AnimationSettings>(defaultSettings);
   const [animations, setAnimations] = useState<(gsap.core.Tween | gsap.core.Timeline)[]>([]);
 
-  // Check for reduced motion preference
+  // Use our custom hook to check for reduced motion preference
+  const prefersReducedMotion = useMediaQuery(mediaQueries.reducedMotion);
+
+  // Update settings when reduced motion preference changes
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
-    
-    const handleChange = () => {
-      setSettings(prev => ({
-        ...prev,
-        reducedMotion: mediaQuery.matches,
-        duration: mediaQuery.matches ? 0.1 : defaultSettings.duration,
-      }));
-    };
-    
-    // Set initial value
-    handleChange();
-    
-    // Listen for changes
-    mediaQuery.addEventListener('change', handleChange);
-    
-    // Cleanup
-    return () => {
-      mediaQuery.removeEventListener('change', handleChange);
-    };
-  }, []);
+    setSettings(prev => ({
+      ...prev,
+      reducedMotion: prefersReducedMotion,
+      duration: prefersReducedMotion ? 0.1 : defaultSettings.duration,
+    }));
+  }, [prefersReducedMotion]);
 
   // Update settings
   const updateSettings = (newSettings: Partial<AnimationSettings>) => {

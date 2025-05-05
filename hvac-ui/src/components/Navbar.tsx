@@ -32,6 +32,7 @@ import {
 } from '@chakra-ui/icons';
 import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/router';
+import { useClickAway, useToggle, useMediaQuery, mediaQueries } from '@/hooks/usehooks';
 
 interface NavbarProps {
   onOpen: () => void;
@@ -42,6 +43,20 @@ export default function Navbar({ onOpen }: NavbarProps) {
   const { colorMode, toggleColorMode } = useColorMode();
   const { user, logout } = useAuth();
   const router = useRouter();
+
+  // Use our custom hooks for better control
+  const [notificationsOpen, toggleNotifications, setNotificationsOpen] = useToggle(false);
+  const [userMenuOpen, toggleUserMenu, setUserMenuOpen] = useToggle(false);
+  const isMobile = useMediaQuery(mediaQueries.mobile);
+
+  // Create refs for click-away detection
+  const notificationsRef = useClickAway(() => {
+    setNotificationsOpen(false);
+  });
+
+  const userMenuRef = useClickAway(() => {
+    setUserMenuOpen(false);
+  });
 
   const handleLogout = async () => {
     await logout();
@@ -74,7 +89,7 @@ export default function Navbar({ onOpen }: NavbarProps) {
             aria-label={'Toggle Navigation'}
           />
         </Flex>
-        
+
         <Flex flex={{ base: 1 }} justify={{ base: 'center', md: 'start' }}>
           <Text
             textAlign={useBreakpointValue({ base: 'center', md: 'left' })}
@@ -103,33 +118,121 @@ export default function Navbar({ onOpen }: NavbarProps) {
             onClick={toggleColorMode}
             variant="ghost"
           />
-          
-          <IconButton
-            aria-label="Notifications"
-            icon={<BellIcon />}
-            variant="ghost"
-          />
-          
-          <Menu>
-            <MenuButton
-              as={Button}
+
+          {/* Notifications with custom toggle and click-away */}
+          <Box position="relative" ref={notificationsRef}>
+            <IconButton
+              aria-label="Notifications"
+              icon={<BellIcon />}
+              variant="ghost"
+              onClick={toggleNotifications}
+              color={notificationsOpen ? 'blue.500' : undefined}
+            />
+            {notificationsOpen && (
+              <Box
+                position="absolute"
+                right="0"
+                mt="2"
+                w="300px"
+                zIndex={10}
+                bg={useColorModeValue('white', 'gray.800')}
+                shadow="lg"
+                rounded="md"
+                p={2}
+                border="1px solid"
+                borderColor={useColorModeValue('gray.200', 'gray.700')}
+              >
+                <Text fontWeight="bold" p={2}>Notifications</Text>
+                <Box p={2} _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }} cursor="pointer">
+                  <Text fontSize="sm">New service order assigned</Text>
+                </Box>
+                <Box p={2} _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }} cursor="pointer">
+                  <Text fontSize="sm">Client message received</Text>
+                </Box>
+                <Box p={2} _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }} cursor="pointer">
+                  <Text fontSize="sm">Warranty expiring soon</Text>
+                </Box>
+                <Box
+                  p={2}
+                  textAlign="center"
+                  borderTop="1px solid"
+                  borderColor={useColorModeValue('gray.200', 'gray.700')}
+                  _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                  cursor="pointer"
+                  onClick={() => setNotificationsOpen(false)}
+                >
+                  <Text fontSize="sm" color="blue.500">Mark all as read</Text>
+                </Box>
+              </Box>
+            )}
+          </Box>
+
+          {/* User menu with custom toggle and click-away */}
+          <Box position="relative" ref={userMenuRef}>
+            <Button
               rounded={'full'}
               variant={'link'}
               cursor={'pointer'}
               minW={0}
+              onClick={toggleUserMenu}
             >
               <Avatar
                 size={'sm'}
                 name={user?.name || 'User'}
               />
-            </MenuButton>
-            <MenuList>
-              <MenuItem>Profile</MenuItem>
-              <MenuItem>Settings</MenuItem>
-              <MenuDivider />
-              <MenuItem onClick={handleLogout}>Sign Out</MenuItem>
-            </MenuList>
-          </Menu>
+            </Button>
+            {userMenuOpen && (
+              <Box
+                position="absolute"
+                right="0"
+                mt="2"
+                w="200px"
+                zIndex={10}
+                bg={useColorModeValue('white', 'gray.800')}
+                shadow="lg"
+                rounded="md"
+                overflow="hidden"
+                border="1px solid"
+                borderColor={useColorModeValue('gray.200', 'gray.700')}
+              >
+                <Box
+                  p={3}
+                  _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                  cursor="pointer"
+                  onClick={() => {
+                    router.push('/profile');
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  <Text>Profile</Text>
+                </Box>
+                <Box
+                  p={3}
+                  _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                  cursor="pointer"
+                  onClick={() => {
+                    router.push('/settings');
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  <Text>Settings</Text>
+                </Box>
+                <Box
+                  p={3}
+                  borderTop="1px solid"
+                  borderColor={useColorModeValue('gray.200', 'gray.700')}
+                  _hover={{ bg: useColorModeValue('gray.100', 'gray.700') }}
+                  cursor="pointer"
+                  onClick={() => {
+                    handleLogout();
+                    setUserMenuOpen(false);
+                  }}
+                >
+                  <Text>Sign Out</Text>
+                </Box>
+              </Box>
+            )}
+          </Box>
         </Stack>
       </Flex>
 
