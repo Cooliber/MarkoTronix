@@ -1,11 +1,26 @@
 import axios from 'axios';
 import { getToken, setToken, getRefreshToken, clearTokens } from '@/utils/tokenStorage';
+import { createCircuitBreaker } from '@/utils/circuitBreaker';
+import { logger } from '@/utils/logger';
+
+// Create circuit breaker for API calls
+export const apiCircuitBreaker = createCircuitBreaker({
+  name: 'api',
+  failureThreshold: 3,
+  recoveryTimeout: 10000, // 10 seconds
+  fallback: (error) => {
+    logger.error('API circuit breaker triggered fallback', error);
+    // Return a fallback response or re-throw based on the error
+    throw error;
+  }
+});
 
 export const api = axios.create({
   baseURL: process.env.NEXT_PUBLIC_API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
+  timeout: 10000, // 10 seconds timeout for better resilience
 });
 
 // Add a request interceptor
@@ -60,3 +75,12 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Execute an API call with circuit breaker protection
+ * @param apiCall Function that makes the API call
+ * @returns Promise with the API response
+ */
+export async function executeWithCircuitBreaker<T>(apiCall: () => Promise<T>): Promise<T> {
+  return apiCircuitBreaker.execute(apiCall);
+}

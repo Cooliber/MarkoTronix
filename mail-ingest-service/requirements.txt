@@ -14,3 +14,16 @@ email-validator>=2.1.0,<2.2.0
 jinja2>=3.1.2,<3.2.0
 httpx>=0.23.0,<0.24.0  # Keep this version for supabase compatibility
 supabase>=1.0.3,<2.16.0
+# Added for robustness implementation
+structlog>=23.1.0,<24.1.0  # Structured logging
+tenacity>=8.2.3,<9.0.0  # Retry mechanism
+prometheus-client>=0.17.1,<0.18.0  # Metrics for monitoring
+
+# Added for attachment processing
+pytesseract>=0.3.10,<0.4.0  # OCR for images and PDFs
+pdf2image>=1.16.3,<1.17.0  # Convert PDF to images for OCR
+PyPDF2>=3.0.1,<3.1.0  # PDF text extraction
+Pillow>=10.0.0,<10.1.0  # Image processing
+pandas>=2.0.3,<2.1.0  # Excel data processing
+openpyxl>=3.1.2,<3.2.0  # Excel file handling
+python-docx>=0.8.11,<0.9.0  # Word document processing

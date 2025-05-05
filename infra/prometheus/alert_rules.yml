@@ -1,0 +1,107 @@
+groups:
+  - name: circuit_breaker_alerts
+    rules:
+      - alert: CircuitBreakerOpen
+        expr: circuit_breaker_state{state="open"} == 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Circuit breaker {{ $labels.name }} is open"
+          description: "Circuit breaker {{ $labels.name }} has been open for more than 10 minutes."
+
+      - alert: HighFailureRate
+        expr: rate(circuit_breaker_failures_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High failure rate for circuit breaker {{ $labels.name }}"
+          description: "Circuit breaker {{ $labels.name }} has a high failure rate (> 10% over 5 minutes)."
+
+  - name: service_alerts
+    rules:
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate for {{ $labels.job }}"
+          description: "{{ $labels.job }} has a high error rate (> 1% over 5 minutes)."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency for {{ $labels.job }}"
+          description: "{{ $labels.job }} has a high 95th percentile latency (> 1s over 5 minutes)."
+
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 1 minute."
+
+  - name: database_alerts
+    rules:
+      - alert: DatabaseConnectionFailures
+        expr: rate(database_connection_failures_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failures for {{ $labels.job }}"
+          description: "{{ $labels.job }} has more than 5 database connection failures per minute."
+          
+  - name: offer_generation_alerts
+    rules:
+      - alert: HighPDFGenerationLatency
+        expr: histogram_quantile(0.95, rate(offer_generation_pdf_generation_duration_seconds_bucket[5m])) > 10
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High PDF generation latency"
+          description: "PDF generation has a high 95th percentile latency (> 10s over 5 minutes)."
+          
+      - alert: HighTemplateRenderingLatency
+        expr: histogram_quantile(0.95, rate(offer_generation_template_rendering_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High template rendering latency"
+          description: "Template rendering has a high 95th percentile latency (> 5s over 5 minutes)."
+          
+      - alert: HighOpenAILatency
+        expr: histogram_quantile(0.95, rate(offer_generation_openai_call_duration_seconds_bucket[5m])) > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High OpenAI API latency"
+          description: "OpenAI API calls have a high 95th percentile latency (> 5s over 5 minutes)."
+          
+      - alert: OpenAICircuitBreakerOpen
+        expr: circuit_breaker_state{name="openai", state="open"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenAI circuit breaker is open"
+          description: "The OpenAI circuit breaker has been open for more than 5 minutes."
+          
+      - alert: OpenRouterCircuitBreakerOpen
+        expr: circuit_breaker_state{name="openrouter", state="open"} == 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenRouter circuit breaker is open"
+          description: "The OpenRouter circuit breaker has been open for more than 5 minutes."

@@ -21,3 +21,6 @@ supabase>=1.0.3,<2.16.0
 # Added missing dependencies
 aiohttp>=3.8.2,<3.9.0  # Adjusted minimum version based on latest info
 pillow>=10.0.0,<10.1.0
+# Added for robustness implementation
+structlog>=23.1.0,<24.1.0  # Structured logging
+prometheus-client>=0.17.1,<0.18.0  # Metrics for monitoring

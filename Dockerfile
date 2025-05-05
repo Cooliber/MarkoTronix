@@ -6,9 +6,11 @@ FROM base AS deps
 WORKDIR /app
 
 # Install dependencies
-COPY hvac-ui/package*.json ./
+COPY package*.json ./
+COPY hvac-ui/package*.json ./hvac-ui/
+COPY .npmrc ./
 RUN apk add --no-cache libc6-compat && \
-    npm ci
+    npm install --no-fund --no-audit
 
 # Rebuild the source code only when needed
 FROM base AS builder

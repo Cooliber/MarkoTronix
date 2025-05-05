@@ -4,11 +4,15 @@ FROM node:20-alpine AS base
 FROM base AS deps
 WORKDIR /app
 
-# Copy package.json and package-lock.json
-COPY hvac-ui/package.json hvac-ui/package-lock.json* ./
+# Install additional dependencies
+RUN apk add --no-cache libc6-compat
 
-# Install dependencies
-RUN npm install
+# Copy package files
+COPY package.json package-lock.json* ./
+COPY .npmrc ./
+
+# Install dependencies with production flag
+RUN npm ci --only=production
 
 # Rebuild the source code only when needed
 FROM base AS builder
@@ -17,18 +21,18 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY hvac-ui/ .
 
 # Set environment variables
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
 
-# Build the application with standalone output
-RUN npm run build
+# Build the application with production optimizations
+RUN npm run build:prod
 
 # Production image, copy all the files and run next
 FROM base AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs
@@ -45,13 +49,18 @@ USER nextjs
 # Expose the port
 EXPOSE 3000
 
-# Set the environment variable for the port
-ENV PORT 3000
-ENV HOST 0.0.0.0
-
-# Enable CORS and allow iframes
-ENV NEXT_PUBLIC_ALLOW_CORS true
-ENV NEXT_PUBLIC_ALLOW_IFRAME true
+# Set the environment variables
+ENV PORT=3000 \
+    HOST=0.0.0.0 \
+    NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    # Security settings
+    ALLOWED_ORIGINS=https://yourdomain.com \
+    ALLOW_IFRAME=false \
+    # Performance optimizations
+    NEXT_OPTIMIZE_FONTS=true \
+    NEXT_OPTIMIZE_IMAGES=true \
+    NEXT_OPTIMIZE_CSS=true
 
 # Start the application
 CMD ["node", "server.js"]

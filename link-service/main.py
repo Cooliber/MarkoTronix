@@ -1,5 +1,4 @@
 import os
-import logging
 import base64
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Any, Union
@@ -17,13 +16,30 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship
 from jose import JWTError, jwt
 import httpx
+import redis
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+# Import core modules
+from core.logging import get_logger, setup_logging, setup_middleware
+from core.exceptions import (
+    setup_exception_handlers,
+    ServiceException,
+    NotFoundException,
+    ValidationException,
+    AuthenticationException,
+    AuthorizationException,
+    DatabaseException,
+    ExternalServiceException,
+    CircuitBreakerOpenException,
 )
-logger = logging.getLogger(__name__)
+from core.circuit_breaker import (
+    create_circuit_breaker,
+    circuit_breaker,
+    get_all_circuit_breakers,
+)
+from core.health import health_router
+
+# Get logger
+logger = get_logger(__name__)
 
 # Load environment variables
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/hvac_crm")
@@ -157,143 +173,169 @@ def verify_jwt_token(token: str) -> TokenData:
             headers={"WWW-Authenticate": "Bearer"},
         )
 
+@circuit_breaker(
+    name="docusign",
+    failure_threshold=3,
+    recovery_timeout=60.0,
+    expected_exceptions={Exception},
+)
 async def create_docusign_signature_request(offer_id: int, db: Session) -> Dict[str, Any]:
     """Create a signature request using DocuSign."""
     if not all([DOCUSIGN_CLIENT_ID, DOCUSIGN_CLIENT_SECRET, DOCUSIGN_ACCOUNT_ID]):
-        raise ValueError("DocuSign credentials not configured")
+        raise ExternalServiceException("DocuSign credentials not configured")
 
     # Get offer from database
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if not offer:
-        raise ValueError(f"Offer {offer_id} not found")
+        raise NotFoundException(f"Offer {offer_id} not found")
 
     if not offer.pdf_path or not os.path.exists(offer.pdf_path):
-        raise ValueError(f"PDF not found for offer {offer_id}")
+        raise ValidationException(f"PDF not found for offer {offer_id}")
 
-    # Initialize DocuSign client
-    from docusign_esign import ApiClient, EnvelopesApi, EnvelopeDefinition, Document, Signer, SignHere, Tabs
+    try:
+        # Initialize DocuSign client
+        from docusign_esign import ApiClient, EnvelopesApi, EnvelopeDefinition, Document, Signer, SignHere, Tabs
 
-    # Create API client
-    api_client = ApiClient()
-    api_client.host = DOCUSIGN_BASE_PATH
+        # Create API client
+        api_client = ApiClient()
+        api_client.host = DOCUSIGN_BASE_PATH
 
-    # TODO: Implement OAuth2 authentication flow
-    # For simplicity, we'll use a pre-generated access token
-    # In production, you would implement the full OAuth2 flow
+        # TODO: Implement OAuth2 authentication flow
+        # For simplicity, we'll use a pre-generated access token
+        # In production, you would implement the full OAuth2 flow
 
-    # Create envelope definition
-    envelope_definition = EnvelopeDefinition(
-        email_subject=f"Please sign your HVAC service offer #{offer_id}",
-        status="sent",  # created, sent
-    )
+        # Create envelope definition
+        envelope_definition = EnvelopeDefinition(
+            email_subject=f"Please sign your HVAC service offer #{offer_id}",
+            status="sent",  # created, sent
+        )
 
-    # Add document to envelope
-    with open(offer.pdf_path, "rb") as file:
-        document_base64 = base64.b64encode(file.read()).decode("utf-8")
+        # Add document to envelope
+        with open(offer.pdf_path, "rb") as file:
+            document_base64 = base64.b64encode(file.read()).decode("utf-8")
 
-    document = Document(
-        document_base64=document_base64,
-        name=f"HVAC Service Offer #{offer_id}",
-        file_extension="pdf",
-        document_id="1",
-    )
-    envelope_definition.documents = [document]
+        document = Document(
+            document_base64=document_base64,
+            name=f"HVAC Service Offer #{offer_id}",
+            file_extension="pdf",
+            document_id="1",
+        )
+        envelope_definition.documents = [document]
 
-    # Add signer to envelope
-    signer = Signer(
-        email=offer.client_email,
-        name=offer.client_name,
-        recipient_id="1",
-        routing_order="1",
-    )
+        # Add signer to envelope
+        signer = Signer(
+            email=offer.client_email,
+            name=offer.client_name,
+            recipient_id="1",
+            routing_order="1",
+        )
 
-    # Add signature tab
-    sign_here = SignHere(
-        document_id="1",
-        page_number="1",
-        recipient_id="1",
-        tab_label="SignHereTab",
-        x_position="100",
-        y_position="100",
-    )
-    tabs = Tabs(sign_here_tabs=[sign_here])
-    signer.tabs = tabs
+        # Add signature tab
+        sign_here = SignHere(
+            document_id="1",
+            page_number="1",
+            recipient_id="1",
+            tab_label="SignHereTab",
+            x_position="100",
+            y_position="100",
+        )
+        tabs = Tabs(sign_here_tabs=[sign_here])
+        signer.tabs = tabs
 
-    envelope_definition.recipients = {"signers": [signer]}
+        envelope_definition.recipients = {"signers": [signer]}
 
-    # Create envelope
-    envelopes_api = EnvelopesApi(api_client)
-    envelope_summary = envelopes_api.create_envelope(DOCUSIGN_ACCOUNT_ID, envelope_definition=envelope_definition)
+        # Create envelope
+        envelopes_api = EnvelopesApi(api_client)
+        envelope_summary = envelopes_api.create_envelope(DOCUSIGN_ACCOUNT_ID, envelope_definition=envelope_definition)
 
-    # Get signing URL
-    from docusign_esign import RecipientViewRequest
-    recipient_view_request = RecipientViewRequest(
-        authentication_method="email",
-        client_user_id=offer.client_email,
-        recipient_id="1",
-        return_url=f"http://localhost:8002/signature/callback?offer_id={offer_id}",
-        user_name=offer.client_name,
-        email=offer.client_email,
-    )
+        # Get signing URL
+        from docusign_esign import RecipientViewRequest
+        recipient_view_request = RecipientViewRequest(
+            authentication_method="email",
+            client_user_id=offer.client_email,
+            recipient_id="1",
+            return_url=f"http://localhost:8002/signature/callback?offer_id={offer_id}",
+            user_name=offer.client_name,
+            email=offer.client_email,
+        )
 
-    recipient_view = envelopes_api.create_recipient_view(
-        DOCUSIGN_ACCOUNT_ID,
-        envelope_summary.envelope_id,
-        recipient_view_request=recipient_view_request,
-    )
+        recipient_view = envelopes_api.create_recipient_view(
+            DOCUSIGN_ACCOUNT_ID,
+            envelope_summary.envelope_id,
+            recipient_view_request=recipient_view_request,
+        )
 
-    return {
-        "request_id": envelope_summary.envelope_id,
-        "signing_url": recipient_view.url,
-        "status": envelope_summary.status,
-    }
+        return {
+            "request_id": envelope_summary.envelope_id,
+            "signing_url": recipient_view.url,
+            "status": envelope_summary.status,
+        }
+    except Exception as e:
+        logger.error(f"DocuSign API error: {str(e)}")
+        raise ExternalServiceException(f"DocuSign API error: {str(e)}")
 
+@circuit_breaker(
+    name="hellosign",
+    failure_threshold=3,
+    recovery_timeout=60.0,
+    expected_exceptions={Exception},
+)
 async def create_hellosign_signature_request(offer_id: int, db: Session) -> Dict[str, Any]:
     """Create a signature request using HelloSign."""
     if not HELLOSIGN_API_KEY:
-        raise ValueError("HelloSign API key not configured")
+        raise ExternalServiceException("HelloSign API key not configured")
 
     # Get offer from database
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if not offer:
-        raise ValueError(f"Offer {offer_id} not found")
+        raise NotFoundException(f"Offer {offer_id} not found")
 
     if not offer.pdf_path or not os.path.exists(offer.pdf_path):
-        raise ValueError(f"PDF not found for offer {offer_id}")
+        raise ValidationException(f"PDF not found for offer {offer_id}")
 
-    # Initialize HelloSign client
-    from hellosign_sdk import HSClient
+    try:
+        # Initialize HelloSign client
+        from hellosign_sdk import HSClient
 
-    client = HSClient(api_key=HELLOSIGN_API_KEY)
+        client = HSClient(api_key=HELLOSIGN_API_KEY)
 
-    # Create signature request
-    response = client.send_signature_request(
-        test_mode=True,
-        title=f"HVAC Service Offer #{offer_id}",
-        subject=f"Please sign your HVAC service offer #{offer_id}",
-        message="Please review and sign this service offer.",
-        signers=[
-            {
-                "email_address": offer.client_email,
-                "name": offer.client_name,
-                "order": 0,
-            }
-        ],
-        files=[offer.pdf_path],
-        metadata={
-            "offer_id": str(offer_id),
-        },
-        client_id=HELLOSIGN_API_KEY,
-    )
+        # Create signature request
+        response = client.send_signature_request(
+            test_mode=True,
+            title=f"HVAC Service Offer #{offer_id}",
+            subject=f"Please sign your HVAC service offer #{offer_id}",
+            message="Please review and sign this service offer.",
+            signers=[
+                {
+                    "email_address": offer.client_email,
+                    "name": offer.client_name,
+                    "order": 0,
+                }
+            ],
+            files=[offer.pdf_path],
+            metadata={
+                "offer_id": str(offer_id),
+            },
+            client_id=HELLOSIGN_API_KEY,
+        )
 
-    return {
-        "request_id": response.signature_request_id,
-        "signing_url": response.signing_url,
-        "status": "sent",
-    }
+        return {
+            "request_id": response.signature_request_id,
+            "signing_url": response.signing_url,
+            "status": "sent",
+        }
+    except Exception as e:
+        logger.error(f"HelloSign API error: {str(e)}")
+        raise ExternalServiceException(f"HelloSign API error: {str(e)}")
 
 # FastAPI app
 app = FastAPI(title="HVAC CRM Link & e-Podpis Service")
+
+# Set up logging
+setup_logging(app)
+
+# Set up exception handlers
+setup_exception_handlers(app)
 
 # CORS middleware
 app.add_middleware(
@@ -304,51 +346,28 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Set up request ID middleware
+setup_middleware(app)
+
 # Mount static files
 app.mount("/storage", StaticFiles(directory=str(STORAGE_PATH)), name="storage")
+
+# Include health check router
+app.include_router(health_router)
 
 # API endpoints
 @app.get("/")
 def read_root():
     return {"status": "ok", "service": "HVAC CRM Link & e-Podpis Service"}
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint for container monitoring."""
-    # Check database connection
-    try:
-        db = SessionLocal()
-        db.execute("SELECT 1")
-        db_status = "ok"
-    except Exception as e:
-        db_status = f"error: {str(e)}"
-    finally:
-        db.close()
-
-    # Check Redis connection
-    try:
-        redis_client = redis.from_url(REDIS_URL)
-        redis_client.ping()
-        redis_status = "ok"
-    except Exception as e:
-        redis_status = f"error: {str(e)}"
-
-    return {
-        "status": "ok",
-        "service": "HVAC CRM Link & e-Podpis Service",
-        "timestamp": datetime.now(datetime.timezone.utc).isoformat(),
-        "dependencies": {
-            "database": db_status,
-            "redis": redis_status
-        }
-    }
+# Health check endpoint is now provided by health_router
 
 @app.get("/offers/{offer_id}/link")
 def generate_offer_link(offer_id: int, db: Session = Depends(get_db)):
     """Generate a short-lived link to view an offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundException("Offer not found")
 
     # Create token with expiry
     token_data = {
@@ -368,12 +387,12 @@ def view_offer(token: str, db: Session = Depends(get_db)):
     try:
         token_data = verify_jwt_token(token)
         if token_data.type != "offer_view":
-            raise HTTPException(status_code=400, detail="Invalid token type")
+            raise ValidationException("Invalid token type")
 
         offer_id = int(token_data.sub)
         offer = db.query(Offer).filter(Offer.id == offer_id).first()
         if offer is None:
-            raise HTTPException(status_code=404, detail="Offer not found")
+            raise NotFoundException("Offer not found")
 
         # If PDF is available, redirect to it
         if offer.pdf_path:
@@ -383,25 +402,21 @@ def view_offer(token: str, db: Session = Depends(get_db)):
         return JSONResponse(content={"html": offer.html_content})
 
     except JWTError:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid or expired token",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+        raise AuthenticationException("Invalid or expired token")
 
 @app.get("/offers/{offer_id}/pdf")
 def get_offer_pdf(offer_id: int, db: Session = Depends(get_db)):
     """Get the PDF file of an offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundException("Offer not found")
 
     if not offer.pdf_path:
-        raise HTTPException(status_code=404, detail="PDF not yet generated for this offer")
+        raise NotFoundException("PDF not yet generated for this offer")
 
     pdf_path = Path(offer.pdf_path)
     if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail="PDF file not found")
+        raise NotFoundException("PDF file not found")
 
     return FileResponse(
         path=pdf_path,
@@ -422,38 +437,37 @@ async def create_signature_request(
     # Validate provider
     valid_providers = ["docusign", "hellosign"]
     if provider not in valid_providers:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid provider. Must be one of: {', '.join(valid_providers)}"
-        )
+        raise ValidationException(f"Invalid provider. Must be one of: {', '.join(valid_providers)}")
 
     # Check if offer exists
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundException("Offer not found")
 
     # Check if client email is available
     if not offer.client_email:
-        raise HTTPException(
-            status_code=400,
-            detail="Client email is required for signature requests"
+        raise ValidationException("Client email is required for signature requests")
+
+    try:
+        # Create signature request in database
+        signature_request = SignatureRequest(
+            offer_id=offer_id,
+            provider=provider,
+            request_id="pending",
+            status="pending",
         )
+        db.add(signature_request)
+        db.commit()
+        db.refresh(signature_request)
 
-    # Create signature request in database
-    signature_request = SignatureRequest(
-        offer_id=offer_id,
-        provider=provider,
-        request_id="pending",
-        status="pending",
-    )
-    db.add(signature_request)
-    db.commit()
-    db.refresh(signature_request)
+        # Create signature request in background
+        background_tasks.add_task(process_signature_request, signature_request.id)
 
-    # Create signature request in background
-    background_tasks.add_task(process_signature_request, signature_request.id)
-
-    return signature_request
+        return signature_request
+    except Exception as e:
+        logger.error(f"Error creating signature request: {str(e)}")
+        db.rollback()
+        raise DatabaseException(f"Error creating signature request: {str(e)}")
 
 @app.get("/signature/requests", response_model=List[SignatureRequestResponse])
 def get_signature_requests(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
@@ -466,7 +480,7 @@ def get_signature_request(request_id: int, db: Session = Depends(get_db)):
     """Get a specific signature request by ID."""
     request = db.query(SignatureRequest).filter(SignatureRequest.id == request_id).first()
     if request is None:
-        raise HTTPException(status_code=404, detail="Signature request not found")
+        raise NotFoundException("Signature request not found")
     return request
 
 @app.post("/signature/callback")

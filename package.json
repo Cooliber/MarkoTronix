@@ -15,6 +15,10 @@
     "test": "cd hvac-ui && npm test",
     "test:ci": "cd hvac-ui && npm run test -- --ci --coverage",
     "clean": "rimraf hvac-ui/.next hvac-ui/out",
+    "clean:modules": "rimraf node_modules hvac-ui/node_modules",
+    "clean:install": "npm run clean:modules && npm install",
+    "fix:deps": "node scripts/fix-dependencies.js",
+    "update:deps": "npx npm-check-updates -u && cd hvac-ui && npx npm-check-updates -u",
     "docker:build": "docker build -t hvac-crm-ui .",
     "docker:run": "docker run -p 3000:3000 --env-file hvac-ui/.env.production hvac-crm-ui",
     "docker:compose": "docker-compose up -d",
@@ -43,12 +47,11 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "react-toast": "^1.0.3",
-    "react-toastify": "^11.0.5",
-    "toast": "^0.5.4"
+    "react-toastify": "^11.0.5"
   },
   "devDependencies": {
     "cross-env": "^7.0.3",
+    "npm-check-updates": "^16.14.18",
     "rimraf": "^5.0.5"
   }
 }

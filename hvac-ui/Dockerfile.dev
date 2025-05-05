@@ -24,6 +24,9 @@ ENV HOSTNAME="0.0.0.0"
 ENV CHOKIDAR_USEPOLLING=true
 ENV WATCHPACK_POLLING=true
 
+# Fix permissions
+RUN chmod -R 777 /app
+
 # Expose port
 EXPOSE 3000
 

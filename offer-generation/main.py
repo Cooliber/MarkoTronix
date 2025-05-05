@@ -1,14 +1,14 @@
 import os
 import json
-import logging
 import asyncio
 import httpx
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Any, Union
+from typing import Dict, List, Optional, Any, Union, Set
 from pathlib import Path
 import uuid
+import prometheus_client
 
-from fastapi import FastAPI, HTTPException, Depends, BackgroundTasks, File, UploadFile, Form, Body
+from fastapi import FastAPI, Depends, BackgroundTasks, File, UploadFile, Form, Body, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -20,12 +20,28 @@ from jose import JWTError, jwt
 from tenacity import retry, stop_after_attempt, wait_exponential
 import jinja2
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+# Import core modules
+from app.core.logging import get_logger, setup_logging, setup_middleware
+from app.core.exceptions import (
+    setup_exception_handlers,
+    ServiceException,
+    NotFoundException,
+    ValidationException,
+    DatabaseException,
+    ExternalServiceException,
+    TemplateRenderingException,
+    PDFGenerationException,
+    OpenAIException,
 )
-logger = logging.getLogger(__name__)
+from app.core.circuit_breaker import (
+    create_circuit_breaker,
+    circuit_breaker,
+    get_all_circuit_breakers,
+)
+from app.core.health import health_router
+
+# Initialize logger
+logger = get_logger(__name__)
 
 # Load environment variables
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://postgres:postgres@postgres:5432/hvac_crm")
@@ -44,6 +60,54 @@ STORAGE_PATH.mkdir(exist_ok=True, parents=True)
 engine = create_engine(DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
+
+# Prometheus metrics
+OFFER_CREATED_COUNTER = prometheus_client.Counter(
+    "offer_generation_offers_created_total",
+    "Total number of offers created",
+)
+
+OFFER_RENDERED_COUNTER = prometheus_client.Counter(
+    "offer_generation_offers_rendered_total",
+    "Total number of offers rendered",
+)
+
+PDF_GENERATION_DURATION = prometheus_client.Histogram(
+    "offer_generation_pdf_generation_duration_seconds",
+    "Time spent generating PDFs",
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0),
+)
+
+TEMPLATE_RENDERING_DURATION = prometheus_client.Histogram(
+    "offer_generation_template_rendering_duration_seconds",
+    "Time spent rendering templates",
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0),
+)
+
+OPENAI_CALL_DURATION = prometheus_client.Histogram(
+    "offer_generation_openai_call_duration_seconds",
+    "Time spent calling OpenAI API",
+    buckets=(0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0),
+)
+
+# Create circuit breakers
+openai_cb = create_circuit_breaker(
+    name="openai",
+    failure_threshold=3,
+    recovery_timeout=60.0,
+)
+
+openrouter_cb = create_circuit_breaker(
+    name="openrouter",
+    failure_threshold=3,
+    recovery_timeout=60.0,
+)
+
+supabase_cb = create_circuit_breaker(
+    name="supabase",
+    failure_threshold=3,
+    recovery_timeout=60.0,
+)
 
 # Database models
 class Email(Base):
@@ -143,15 +207,22 @@ def get_db():
         db.close()
 
 # Helper functions
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
-async def call_llm_api(
+@circuit_breaker(
+    name="openai",
+    failure_threshold=3,
+    recovery_timeout=60.0,
+    expected_exceptions={Exception},
+)
+async def call_openai_api(
     prompt: str,
     system_prompt: Optional[str] = None,
     model: Optional[str] = None,
     temperature: float = 0.7,
-    use_openrouter: bool = True
 ) -> str:
-    """Call LLM API (OpenRouter or OpenAI) with retry logic."""
+    """Call OpenAI API with circuit breaker protection."""
+    if not OPENAI_API_KEY:
+        raise OpenAIException("OpenAI API key not provided")
+
     if not model:
         model = DEFAULT_LLM_MODEL
 
@@ -160,127 +231,188 @@ async def call_llm_api(
         messages.append({"role": "system", "content": system_prompt})
     messages.append({"role": "user", "content": prompt})
 
-    if use_openrouter and OPENROUTER_API_KEY:
-        # Use OpenRouter
-        headers = {
-            "Authorization": f"Bearer {OPENROUTER_API_KEY}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://hvac-crm.example.com",
-        }
-        payload = {
-            "model": model,
-            "messages": messages,
-            "temperature": temperature,
-        }
-
-        async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{OPENROUTER_URL}/chat/completions",
-                headers=headers,
-                json=payload,
-                timeout=60,
+    try:
+        with OPENAI_CALL_DURATION.time():
+            import openai
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
             )
-            response.raise_for_status()
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
+            return response.choices[0].message.content
+    except Exception as e:
+        logger.error(f"OpenAI API call failed: {str(e)}")
+        raise OpenAIException(f"OpenAI API call failed: {str(e)}")
 
-    elif OPENAI_API_KEY:
-        # Use OpenAI directly
-        import openai
-        openai.api_key = OPENAI_API_KEY
+@circuit_breaker(
+    name="openrouter",
+    failure_threshold=3,
+    recovery_timeout=60.0,
+    expected_exceptions={Exception},
+)
+async def call_openrouter_api(
+    prompt: str,
+    system_prompt: Optional[str] = None,
+    model: Optional[str] = None,
+    temperature: float = 0.7,
+) -> str:
+    """Call OpenRouter API with circuit breaker protection."""
+    if not OPENROUTER_API_KEY:
+        raise OpenAIException("OpenRouter API key not provided")
 
-        response = await openai.ChatCompletion.acreate(
-            model=model,
-            messages=messages,
-            temperature=temperature,
-        )
-        return response.choices[0].message.content
+    if not model:
+        model = DEFAULT_LLM_MODEL
 
-    else:
-        raise ValueError("No API key provided for LLM service")
+    messages = []
+    if system_prompt:
+        messages.append({"role": "system", "content": system_prompt})
+    messages.append({"role": "user", "content": prompt})
+
+    try:
+        with OPENAI_CALL_DURATION.time():
+            headers = {
+                "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+                "Content-Type": "application/json",
+                "HTTP-Referer": "https://hvac-crm.example.com",
+            }
+            payload = {
+                "model": model,
+                "messages": messages,
+                "temperature": temperature,
+            }
+
+            async with httpx.AsyncClient() as client:
+                response = await client.post(
+                    f"{OPENROUTER_URL}/chat/completions",
+                    headers=headers,
+                    json=payload,
+                    timeout=60,
+                )
+                response.raise_for_status()
+                result = response.json()
+                return result["choices"][0]["message"]["content"]
+    except Exception as e:
+        logger.error(f"OpenRouter API call failed: {str(e)}")
+        raise OpenAIException(f"OpenRouter API call failed: {str(e)}")
+
+async def call_llm_api(
+    prompt: str,
+    system_prompt: Optional[str] = None,
+    model: Optional[str] = None,
+    temperature: float = 0.7,
+    use_openrouter: bool = True
+) -> str:
+    """Call LLM API (OpenRouter or OpenAI) with retry logic."""
+    try:
+        if use_openrouter and OPENROUTER_API_KEY:
+            return await call_openrouter_api(prompt, system_prompt, model, temperature)
+        elif OPENAI_API_KEY:
+            return await call_openai_api(prompt, system_prompt, model, temperature)
+        else:
+            raise OpenAIException("No API key provided for LLM service")
+    except Exception as e:
+        logger.error(f"LLM API call failed: {str(e)}")
+        raise OpenAIException(f"LLM API call failed: {str(e)}")
 
 async def generate_offer_content(client_data: Dict[str, Any], service_type: str, description: str, price: float, currency: str, valid_until: datetime) -> str:
     """Generate HTML content for the offer using LLM."""
-    system_prompt = """
-    You are an AI assistant for a HVAC (Heating, Ventilation, and Air Conditioning) company.
-    Your task is to generate a professional offer/quote for a client based on the provided information.
-    The response should be in HTML format, ready to be rendered as a PDF.
-    Include a professional header, client information, service details, pricing, terms, and a signature section.
-    Make it visually appealing and professional.
-    """
+    try:
+        with TEMPLATE_RENDERING_DURATION.time():
+            system_prompt = """
+            You are an AI assistant for a HVAC (Heating, Ventilation, and Air Conditioning) company.
+            Your task is to generate a professional offer/quote for a client based on the provided information.
+            The response should be in HTML format, ready to be rendered as a PDF.
+            Include a professional header, client information, service details, pricing, terms, and a signature section.
+            Make it visually appealing and professional.
+            """
 
-    prompt = f"""
-    Generate a professional HVAC service offer with the following details:
+            prompt = f"""
+            Generate a professional HVAC service offer with the following details:
 
-    Client Information:
-    - Name: {client_data.get('client_name', 'N/A')}
-    - Email: {client_data.get('client_email', 'N/A')}
-    - Phone: {client_data.get('client_phone', 'N/A')}
-    - Address: {client_data.get('client_address', 'N/A')}
+            Client Information:
+            - Name: {client_data.get('client_name', 'N/A')}
+            - Email: {client_data.get('client_email', 'N/A')}
+            - Phone: {client_data.get('client_phone', 'N/A')}
+            - Address: {client_data.get('client_address', 'N/A')}
 
-    Service Information:
-    - Type: {service_type}
-    - Description: {description}
-    - Price: {price} {currency}
-    - Valid Until: {valid_until.strftime('%Y-%m-%d')}
+            Service Information:
+            - Type: {service_type}
+            - Description: {description}
+            - Price: {price} {currency}
+            - Valid Until: {valid_until.strftime('%Y-%m-%d')}
 
-    Include the following sections:
-    1. Professional header with company logo placeholder
-    2. Client information
-    3. Service details
-    4. Pricing breakdown
-    5. Terms and conditions
-    6. Signature section for client acceptance
+            Include the following sections:
+            1. Professional header with company logo placeholder
+            2. Client information
+            3. Service details
+            4. Pricing breakdown
+            5. Terms and conditions
+            6. Signature section for client acceptance
 
-    The HTML should be styled with CSS for a professional appearance.
-    """
+            The HTML should be styled with CSS for a professional appearance.
+            """
 
-    html_content = await call_llm_api(prompt, system_prompt)
+            html_content = await call_llm_api(prompt, system_prompt)
 
-    # Ensure the response is valid HTML
-    if not html_content.strip().startswith("<"):
-        html_content = f"<html><body>{html_content}</body></html>"
+            # Ensure the response is valid HTML
+            if not html_content.strip().startswith("<"):
+                html_content = f"<html><body>{html_content}</body></html>"
 
-    return html_content
+            return html_content
+    except Exception as e:
+        logger.error(f"Failed to generate offer content: {str(e)}")
+        raise TemplateRenderingException(f"Failed to generate offer content: {str(e)}")
 
 async def generate_pdf_from_html(html_content: str, output_path: Path) -> Path:
     """Generate PDF from HTML content using WeasyPrint."""
-    from weasyprint import HTML
+    try:
+        with PDF_GENERATION_DURATION.time():
+            from weasyprint import HTML
 
-    # Ensure the directory exists
-    output_path.parent.mkdir(exist_ok=True, parents=True)
+            # Ensure the directory exists
+            output_path.parent.mkdir(exist_ok=True, parents=True)
 
-    # Generate PDF
-    HTML(string=html_content).write_pdf(output_path)
+            # Generate PDF
+            HTML(string=html_content).write_pdf(output_path)
 
-    return output_path
+            return output_path
+    except Exception as e:
+        logger.error(f"Failed to generate PDF with WeasyPrint: {str(e)}")
+        raise PDFGenerationException(f"Failed to generate PDF with WeasyPrint: {str(e)}")
 
 async def generate_pdf_with_puppeteer(html_content: str, output_path: Path) -> Path:
     """Generate PDF from HTML content using Puppeteer."""
-    from pyppeteer import launch
+    try:
+        with PDF_GENERATION_DURATION.time():
+            from pyppeteer import launch
 
-    # Ensure the directory exists
-    output_path.parent.mkdir(exist_ok=True, parents=True)
+            # Ensure the directory exists
+            output_path.parent.mkdir(exist_ok=True, parents=True)
 
-    # Write HTML to a temporary file
-    temp_html_path = output_path.with_suffix('.html')
-    with open(temp_html_path, 'w') as f:
-        f.write(html_content)
+            # Write HTML to a temporary file
+            temp_html_path = output_path.with_suffix('.html')
+            with open(temp_html_path, 'w') as f:
+                f.write(html_content)
 
-    # Launch browser and generate PDF
-    browser = await launch(
-        args=['--no-sandbox', '--disable-setuid-sandbox'],
-        executablePath='/usr/bin/chromium',
-    )
-    page = await browser.newPage()
-    await page.goto(f'file://{temp_html_path}', {'waitUntil': 'networkidle0'})
-    await page.pdf({'path': str(output_path), 'format': 'A4', 'printBackground': True})
-    await browser.close()
+            # Launch browser and generate PDF
+            browser = await launch(
+                args=['--no-sandbox', '--disable-setuid-sandbox'],
+                executablePath='/usr/bin/chromium',
+            )
+            page = await browser.newPage()
+            await page.goto(f'file://{temp_html_path}', {'waitUntil': 'networkidle0'})
+            await page.pdf({'path': str(output_path), 'format': 'A4', 'printBackground': True})
+            await browser.close()
 
-    # Clean up temporary HTML file
-    temp_html_path.unlink()
+            # Clean up temporary HTML file
+            temp_html_path.unlink()
 
-    return output_path
+            return output_path
+    except Exception as e:
+        logger.error(f"Failed to generate PDF with Puppeteer: {str(e)}")
+        raise PDFGenerationException(f"Failed to generate PDF with Puppeteer: {str(e)}")
 
 def create_jwt_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     """Create a JWT token."""
@@ -299,6 +431,15 @@ def create_jwt_token(data: Dict[str, Any], expires_delta: Optional[timedelta] = 
 # FastAPI app
 app = FastAPI(title="HVAC CRM Offer Generation Service")
 
+# Set up logging
+setup_logging(app)
+
+# Set up exception handlers
+setup_exception_handlers(app)
+
+# Set up request ID middleware
+setup_middleware(app)
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -308,6 +449,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Include health check router
+app.include_router(health_router)
+
 # Mount static files
 app.mount("/storage", StaticFiles(directory=str(STORAGE_PATH)), name="storage")
 
@@ -316,37 +460,6 @@ app.mount("/storage", StaticFiles(directory=str(STORAGE_PATH)), name="storage")
 def read_root():
     return {"status": "ok", "service": "HVAC CRM Offer Generation Service"}
 
-@app.get("/health")
-def health_check():
-    """Health check endpoint for container monitoring."""
-    # Check database connection
-    try:
-        db = SessionLocal()
-        db.execute("SELECT 1")
-        db_status = "ok"
-    except Exception as e:
-        db_status = f"error: {str(e)}"
-    finally:
-        db.close()
-
-    # Check Redis connection
-    try:
-        redis_client = redis.from_url(REDIS_URL)
-        redis_client.ping()
-        redis_status = "ok"
-    except Exception as e:
-        redis_status = f"error: {str(e)}"
-
-    return {
-        "status": "ok",
-        "service": "HVAC CRM Offer Generation Service",
-        "timestamp": datetime.now(datetime.timezone.utc).isoformat(),
-        "dependencies": {
-            "database": db_status,
-            "redis": redis_status
-        }
-    }
-
 @app.post("/offers", response_model=OfferResponse, status_code=201)
 async def create_offer(
     offer: OfferCreate,
@@ -354,49 +467,58 @@ async def create_offer(
     db: Session = Depends(get_db)
 ):
     """Create a new offer."""
-    # Calculate valid_until date
-    valid_until = datetime.utcnow() + timedelta(days=offer.valid_days)
+    try:
+        # Calculate valid_until date
+        valid_until = datetime.utcnow() + timedelta(days=offer.valid_days)
 
-    # Generate HTML content
-    client_data = {
-        "client_name": offer.client_name,
-        "client_email": offer.client_email,
-        "client_phone": offer.client_phone,
-        "client_address": offer.client_address,
-    }
+        # Generate HTML content
+        client_data = {
+            "client_name": offer.client_name,
+            "client_email": offer.client_email,
+            "client_phone": offer.client_phone,
+            "client_address": offer.client_address,
+        }
 
-    html_content = await generate_offer_content(
-        client_data,
-        offer.service_type,
-        offer.description,
-        offer.price,
-        offer.currency,
-        valid_until
-    )
+        html_content = await generate_offer_content(
+            client_data,
+            offer.service_type,
+            offer.description,
+            offer.price,
+            offer.currency,
+            valid_until
+        )
 
-    # Create offer in database
-    db_offer = Offer(
-        email_id=offer.email_id,
-        client_name=offer.client_name,
-        client_email=offer.client_email,
-        client_phone=offer.client_phone,
-        client_address=offer.client_address,
-        service_type=offer.service_type,
-        description=offer.description,
-        price=offer.price,
-        currency=offer.currency,
-        valid_until=valid_until,
-        html_content=html_content,
-        status="draft",
-    )
-    db.add(db_offer)
-    db.commit()
-    db.refresh(db_offer)
+        # Create offer in database
+        db_offer = Offer(
+            email_id=offer.email_id,
+            client_name=offer.client_name,
+            client_email=offer.client_email,
+            client_phone=offer.client_phone,
+            client_address=offer.client_address,
+            service_type=offer.service_type,
+            description=offer.description,
+            price=offer.price,
+            currency=offer.currency,
+            valid_until=valid_until,
+            html_content=html_content,
+            status="draft",
+        )
+        db.add(db_offer)
+        db.commit()
+        db.refresh(db_offer)
 
-    # Generate PDF in background
-    background_tasks.add_task(generate_pdf_for_offer, db_offer.id)
+        # Increment offer created counter
+        OFFER_CREATED_COUNTER.inc()
 
-    return db_offer
+        # Generate PDF in background
+        background_tasks.add_task(generate_pdf_for_offer, db_offer.id)
+
+        return db_offer
+    except Exception as e:
+        logger.error(f"Failed to create offer: {str(e)}")
+        if isinstance(e, ServiceException):
+            raise
+        raise ValidationException(f"Failed to create offer: {str(e)}")
 
 @app.post("/offers/generate", response_model=OfferResponse)
 async def generate_offer_from_email(
@@ -405,87 +527,100 @@ async def generate_offer_from_email(
     db: Session = Depends(get_db)
 ):
     """Generate an offer from email data."""
-    email_id = request.email_id
+    try:
+        email_id = request.email_id
 
-    # Get email and entity data
-    email = db.query(Email).filter(Email.id == email_id).first()
-    if not email:
-        raise HTTPException(status_code=404, detail=f"Email with ID {email_id} not found")
+        # Get email and entity data
+        email = db.query(Email).filter(Email.id == email_id).first()
+        if not email:
+            raise NotFoundException(f"Email with ID {email_id} not found")
 
-    entity = db.query(EmailEntity).filter(EmailEntity.email_id == email_id).first()
-    if not entity:
-        raise HTTPException(status_code=404, detail=f"No entity data found for email {email_id}")
+        entity = db.query(EmailEntity).filter(EmailEntity.email_id == email_id).first()
+        if not entity:
+            raise NotFoundException(f"No entity data found for email {email_id}")
 
-    # Create offer data
-    valid_until = datetime.utcnow() + timedelta(days=30)
+        # Create offer data
+        valid_until = datetime.utcnow() + timedelta(days=30)
 
-    # Extract price from estimated_price field
-    price = 0.0
-    if entity.estimated_price:
-        # Try to extract a numeric value from the estimated_price string
-        import re
-        price_match = re.search(r'(\d+(?:\.\d+)?)', entity.estimated_price)
-        if price_match:
-            price = float(price_match.group(1))
+        # Extract price from estimated_price field
+        price = 0.0
+        if entity.estimated_price:
+            # Try to extract a numeric value from the estimated_price string
+            import re
+            price_match = re.search(r'(\d+(?:\.\d+)?)', entity.estimated_price)
+            if price_match:
+                price = float(price_match.group(1))
 
-    # Generate HTML content
-    client_data = {
-        "client_name": entity.client_name or "Client",
-        "client_email": entity.client_email,
-        "client_phone": entity.client_phone,
-        "client_address": entity.client_address,
-    }
+        # Generate HTML content
+        client_data = {
+            "client_name": entity.client_name or "Client",
+            "client_email": entity.client_email,
+            "client_phone": entity.client_phone,
+            "client_address": entity.client_address,
+        }
 
-    service_type = entity.service_type or "HVAC Service"
-    description = f"Service requested via email: {email.subject}\n\n"
-    if entity.notes:
-        description += f"Notes: {entity.notes}"
+        service_type = entity.service_type or "HVAC Service"
+        description = f"Service requested via email: {email.subject}\n\n"
+        if entity.notes:
+            description += f"Notes: {entity.notes}"
 
-    html_content = await generate_offer_content(
-        client_data,
-        service_type,
-        description,
-        price,
-        "PLN",
-        valid_until
-    )
+        html_content = await generate_offer_content(
+            client_data,
+            service_type,
+            description,
+            price,
+            "PLN",
+            valid_until
+        )
 
-    # Create offer in database
-    db_offer = Offer(
-        email_id=email_id,
-        client_name=entity.client_name or "Client",
-        client_email=entity.client_email,
-        client_phone=entity.client_phone,
-        client_address=entity.client_address,
-        service_type=service_type,
-        description=description,
-        price=price,
-        currency="PLN",
-        valid_until=valid_until,
-        html_content=html_content,
-        status="draft",
-    )
-    db.add(db_offer)
-    db.commit()
-    db.refresh(db_offer)
+        # Create offer in database
+        db_offer = Offer(
+            email_id=email_id,
+            client_name=entity.client_name or "Client",
+            client_email=entity.client_email,
+            client_phone=entity.client_phone,
+            client_address=entity.client_address,
+            service_type=service_type,
+            description=description,
+            price=price,
+            currency="PLN",
+            valid_until=valid_until,
+            html_content=html_content,
+            status="draft",
+        )
+        db.add(db_offer)
+        db.commit()
+        db.refresh(db_offer)
 
-    # Generate PDF in background
-    background_tasks.add_task(generate_pdf_for_offer, db_offer.id)
+        # Increment offer created counter
+        OFFER_CREATED_COUNTER.inc()
 
-    return db_offer
+        # Generate PDF in background
+        background_tasks.add_task(generate_pdf_for_offer, db_offer.id)
+
+        return db_offer
+    except Exception as e:
+        logger.error(f"Failed to generate offer from email: {str(e)}")
+        if isinstance(e, ServiceException):
+            raise
+        raise ValidationException(f"Failed to generate offer from email: {str(e)}")
 
 @app.get("/offers", response_model=List[OfferResponse])
 def get_offers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
     """Get all offers."""
-    offers = db.query(Offer).offset(skip).limit(limit).all()
-    return offers
+    try:
+        offers = db.query(Offer).offset(skip).limit(limit).all()
+        return offers
+    except Exception as e:
+        logger.error(f"Failed to get offers: {str(e)}")
+        raise DatabaseException(f"Failed to get offers: {str(e)}")
 
 @app.get("/offers/{offer_id}", response_model=OfferResponse)
 def get_offer(offer_id: int, db: Session = Depends(get_db)):
     """Get a specific offer by ID."""
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundException("Offer not found")
     return offer
 
 @app.get("/offers/{offer_id}/html")
@@ -493,7 +628,7 @@ def get_offer_html(offer_id: int, db: Session = Depends(get_db)):
     """Get the HTML content of an offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundException("Offer not found")
 
     return JSONResponse(content={"html": offer.html_content})
 
@@ -502,14 +637,14 @@ def get_offer_pdf(offer_id: int, db: Session = Depends(get_db)):
     """Get the PDF file of an offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundException("Offer not found")
 
     if not offer.pdf_path:
-        raise HTTPException(status_code=404, detail="PDF not yet generated for this offer")
+        raise NotFoundException("PDF not yet generated for this offer")
 
     pdf_path = Path(offer.pdf_path)
     if not pdf_path.exists():
-        raise HTTPException(status_code=404, detail="PDF file not found")
+        raise NotFoundException("PDF file not found")
 
     return FileResponse(
         path=pdf_path,
@@ -520,32 +655,37 @@ def get_offer_pdf(offer_id: int, db: Session = Depends(get_db)):
 @app.put("/offers/{offer_id}/status", response_model=OfferResponse)
 def update_offer_status(offer_id: int, status_update: OfferUpdateStatus, db: Session = Depends(get_db)):
     """Update the status of an offer."""
-    offer = db.query(Offer).filter(Offer.id == offer_id).first()
-    if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+    try:
+        offer = db.query(Offer).filter(Offer.id == offer_id).first()
+        if offer is None:
+            raise NotFoundException("Offer not found")
 
-    # Validate status
-    valid_statuses = ["draft", "sent", "accepted", "rejected"]
-    if status_update.status not in valid_statuses:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
-        )
+        # Validate status
+        valid_statuses = ["draft", "sent", "accepted", "rejected"]
+        if status_update.status not in valid_statuses:
+            raise ValidationException(
+                f"Invalid status. Must be one of: {', '.join(valid_statuses)}"
+            )
 
-    # Update status
-    offer.status = status_update.status
-    offer.updated_at = datetime.utcnow()
-    db.commit()
-    db.refresh(offer)
+        # Update status
+        offer.status = status_update.status
+        offer.updated_at = datetime.utcnow()
+        db.commit()
+        db.refresh(offer)
 
-    return offer
+        return offer
+    except Exception as e:
+        logger.error(f"Failed to update offer status: {str(e)}")
+        if isinstance(e, ServiceException):
+            raise
+        raise DatabaseException(f"Failed to update offer status: {str(e)}")
 
 @app.post("/offers/{offer_id}/regenerate-pdf")
 async def regenerate_pdf(offer_id: int, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     """Regenerate the PDF for an offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundException("Offer not found")
 
     # Generate PDF in background
     background_tasks.add_task(generate_pdf_for_offer, offer.id)
@@ -557,7 +697,7 @@ def get_offer_token(offer_id: int, db: Session = Depends(get_db)):
     """Generate a JWT token for accessing the offer."""
     offer = db.query(Offer).filter(Offer.id == offer_id).first()
     if offer is None:
-        raise HTTPException(status_code=404, detail="Offer not found")
+        raise NotFoundException("Offer not found")
 
     # Create token with 24-hour expiry
     token_data = {
@@ -596,6 +736,9 @@ async def generate_pdf_for_offer(offer_id: int):
         # Update offer with PDF path
         offer.pdf_path = str(pdf_path)
         db.commit()
+
+        # Increment offer rendered counter
+        OFFER_RENDERED_COUNTER.inc()
 
         logger.info(f"PDF generated for offer {offer_id}: {pdf_path}")
 
